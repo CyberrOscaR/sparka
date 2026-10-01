@@ -14,6 +14,11 @@ const UNIQUE = [
     title: 'El Pulso: adiós al ghosting',
     text: 'Si una conversación se enfría, os preguntamos en secreto si queréis seguir. Un «sí» solo se revela si es mutuo (y os proponemos un plan). Un «no» se despide con cariño. Nadie se queda esperando.',
   },
+  {
+    icon: '📅',
+    title: 'Coincidir: la cita, cuadrada en secreto',
+    text: 'Se acabó el «¿y tú cuándo puedes?». Cada cual marca en secreto sus huecos de la semana y Sparka solo os dice cuándo coincidís, con una idea de plan y directo a tu calendario. Nadie ve tu agenda ni cuándo no puedes.',
+  },
 ];
 
 const PERKS = [

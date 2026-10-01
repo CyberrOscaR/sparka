@@ -24,6 +24,7 @@ export function Matches() {
   useSocketEvent('match:removed', load);
   useSocketEvent('message:new', load);
   useSocketEvent('pulse:changed', load);
+  useSocketEvent('coincide:changed', load);
 
   if (!matches) return <Spinner />;
 
@@ -90,6 +91,7 @@ export function Matches() {
                               </span>
                             )}
                             {m.pulsePending && <span className="badge badge-brand">💓 Pulso</span>}
+                            {m.coincidePending && <span className="badge badge-spark">📅 ¿Quedáis?</span>}
                           </strong>
                           <time>{shortTime(m.lastMessage.createdAt)}</time>
                         </div>
@@ -98,6 +100,8 @@ export function Matches() {
                             ? 'Conversación cerrada 💐'
                             : m.pulsePending
                               ? '¿Te apetece seguir? Responde al Pulso'
+                              : m.coincidePending
+                                ? 'Te proponen quedar: marca tus huecos en secreto'
                               : `${mine && m.lastMessage.kind === 'text' ? 'Tú: ' : ''}${m.lastMessage.body.split('\n').at(-1)}`}
                         </p>
                       </div>

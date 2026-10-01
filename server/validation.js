@@ -105,6 +105,12 @@ export const pulseVoteSchema = z.object({
   answer: z.enum(['yes', 'no'], 'Responde sí o no.'),
 });
 
+export const coincideSchema = z.object({
+  slots: z
+    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}:(manana|tarde|noche)$/, 'Hueco no válido.'))
+    .max(30, 'Demasiados huecos.'),
+});
+
 export const reportSchema = z.object({
   reason: z.enum(REPORT_REASON_IDS, 'Elige un motivo.'),
   details: z.string().trim().max(1000).optional().default(''),

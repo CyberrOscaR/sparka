@@ -361,6 +361,26 @@ export function createDemo(
     }
   }
 
+  /** Los perfiles demo marcan sus huecos de la semana (más o menos la mitad). */
+  function onCoincideStarted(matchId) {
+    const m = db.prepare('SELECT user_a, user_b FROM matches WHERE id = ?').get(matchId);
+    for (const id of [m.user_a, m.user_b]) {
+      if (!getProfile(db, id)?.isDemo) continue;
+      later(delay() * 2, () => {
+        const slots = [];
+        for (let d = 0; d < 7; d++) {
+          const date = new Date(Date.now() + d * 86_400_000).toISOString().slice(0, 10);
+          for (const franja of ['manana', 'tarde', 'noche']) if (random() < 0.5) slots.push(`${date}:${franja}`);
+        }
+        try {
+          ctx.coincide.submit(matchId, id, slots);
+        } catch {
+          // La búsqueda ya terminó o el match ya no existe.
+        }
+      });
+    }
+  }
+
   function stop() {
     for (const t of pendingTimers) clearTimeout(t);
     pendingTimers.clear();
@@ -374,6 +394,7 @@ export function createDemo(
     onBlindAnswered,
     onBlindLiked,
     onPulseStarted,
+    onCoincideStarted,
     stop,
   };
 }

@@ -510,3 +510,24 @@ kbd { padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); bac
 .pulse-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
 .closed-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--surface); color: var(--muted); font-weight: 600; }
 .convo.closed { opacity: 0.6; }
+
+/* ---------- Coincidir ---------- */
+.coincide-btn { color: var(--brand); }
+.coincide-card { border-color: var(--spark); }
+.coincide-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.coincide-row p { flex: 1 1 220px; }
+.avail-grid { display: grid; grid-template-columns: 76px repeat(3, 1fr); gap: 6px; align-items: center; }
+.avail-row { display: contents; }
+.avail-head { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-align: center; }
+.avail-day { font-weight: 700; font-size: 0.9rem; text-transform: capitalize; }
+.avail-cell { height: 44px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); font-weight: 800; color: #fff; transition: all 0.12s; }
+.avail-cell:hover:not(:disabled) { border-color: var(--brand); }
+.avail-cell.on { background: var(--grad); border-color: transparent; }
+.avail-cell:disabled { background: var(--surface-2); opacity: 0.45; cursor: not-allowed; }
+.plan-card { align-self: center; width: min(100%, 420px); margin: 12px 0; padding: 18px; border-radius: 20px; background: var(--surface); border: 2px solid var(--spark); box-shadow: var(--shadow); display: grid; gap: 8px; justify-items: start; }
+.plan-card .eyebrow { color: var(--spark); margin: 0; }
+.plan-when { display: block; font-size: 1.3rem; line-height: 1.25; }
+.plan-when::first-letter { text-transform: uppercase; }
+.plan-card p { margin: 0; }
+.plan-more { color: var(--muted); font-size: 0.88rem; }
+.plan-safety { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.8rem; }

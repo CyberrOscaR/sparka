@@ -52,6 +52,7 @@ export function serializeMessage(row) {
     body: row.body,
     flag: row.flag,
     kind: row.kind ?? 'text',
+    data: row.data ? JSON.parse(row.data) : null,
     createdAt: row.created_at,
     readAt: row.read_at,
   };

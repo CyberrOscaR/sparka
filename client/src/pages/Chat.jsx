@@ -1,6 +1,17 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Activity, ArrowLeft, Ban, EllipsisVertical, HeartCrack, Send, ShieldAlert, Trash2, User } from 'lucide-react';
+import {
+  Activity,
+  ArrowLeft,
+  Ban,
+  CalendarHeart,
+  EllipsisVertical,
+  HeartCrack,
+  Send,
+  ShieldAlert,
+  Trash2,
+  User,
+} from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { clockTime, longDate } from '../lib/format.js';
@@ -8,6 +19,7 @@ import { useMeta } from '../lib/meta.jsx';
 import { useRealtime, useSocketEvent } from '../lib/realtime.jsx';
 import { useToast } from '../lib/toast.jsx';
 import { ProfileDetails } from '../components/ProfileDetails.jsx';
+import { AvailabilityPicker, PlanCard } from '../components/Coincide.jsx';
 import { ConfirmDialog, ReportDialog } from '../components/dialogs.jsx';
 import { Avatar, DemoBadge, Modal, Spinner } from '../components/ui.jsx';
 
@@ -42,7 +54,7 @@ export function Chat() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [dialog, setDialog] = useState(null); // 'profile' | 'unmatch' | 'report' | 'pulse' | 'pulse-no' | { offensive }
+  const [dialog, setDialog] = useState(null); // 'profile' | 'unmatch' | 'report' | 'pulse' | 'pulse-no' | 'coincide' | { offensive }
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimer = useRef(null);
@@ -101,10 +113,12 @@ export function Chat() {
     if (matchId !== id) return;
     setMessages((list) => list.map((m) => (m.senderId === me.id && !m.readAt ? { ...m, readAt } : m)));
   });
-  useSocketEvent('pulse:changed', ({ matchId }) => {
+  const reloadMatch = ({ matchId }) => {
     if (matchId !== id) return;
     api.get(`/api/matches/${id}`).then(setMatch, () => {});
-  });
+  };
+  useSocketEvent('pulse:changed', reloadMatch);
+  useSocketEvent('coincide:changed', reloadMatch);
   useSocketEvent('match:removed', ({ matchId }) => {
     if (matchId !== id) return;
     toast('Esta conversación ya no está disponible.');
@@ -129,6 +143,30 @@ export function Chat() {
     setMessages((list) => [...older, ...list]);
     setHasMore(more);
     requestAnimationFrame(() => (el.scrollTop = el.scrollHeight - prevHeight));
+  }
+
+  /** Coincidir: abre la cuadrícula secreta (y empieza la búsqueda si nadie lo había hecho). */
+  async function openCoincide() {
+    if (!match.coincide) {
+      try {
+        setMatch({ ...match, ...(await api.post(`/api/matches/${id}/coincide`)) });
+      } catch (err) {
+        if (err.status !== 409) return toast(err.message, { type: 'error' });
+        setMatch(await api.get(`/api/matches/${id}`));
+      }
+    }
+    setDialog('coincide');
+  }
+
+  async function saveSlots(slots) {
+    try {
+      const state = await api.put(`/api/matches/${id}/coincide`, { slots });
+      setMatch((m) => ({ ...m, ...state }));
+      setDialog(null);
+      if (state.coincide) toast(`📅 Guardado en secreto. Cuando ${match.user.name} marque los suyos, os diremos cuándo coincidís.`);
+    } catch (err) {
+      toast(err.message, { type: 'error' });
+    }
   }
 
   async function startPulse() {
@@ -208,6 +246,11 @@ export function Chat() {
             </small>
           </span>
         </button>
+        {!match.closed && (
+          <button className="icon-btn coincide-btn" onClick={openCoincide} aria-label="¿Cuándo coincidimos?" title="¿Cuándo coincidimos?">
+            <CalendarHeart size={22} />
+          </button>
+        )}
         <button className="icon-btn" onClick={() => setMenu((v) => !v)} aria-label="Más opciones" aria-expanded={menu}>
           <EllipsisVertical size={22} />
         </button>
@@ -216,6 +259,11 @@ export function Chat() {
             <button role="menuitem" onClick={() => setDialog('profile')}>
               <User size={18} /> Ver perfil
             </button>
+            {!match.closed && (
+              <button role="menuitem" onClick={openCoincide}>
+                <CalendarHeart size={18} /> ¿Cuándo coincidimos? 📅
+              </button>
+            )}
             {match.canStartPulse && (
               <button role="menuitem" onClick={() => setDialog('pulse')}>
                 <Activity size={18} /> Tomar el Pulso 💓
@@ -284,6 +332,14 @@ export function Chat() {
           const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
           const grouped = prev && prev.senderId === m.senderId && m.createdAt - prev.createdAt < GROUP_GAP && !newDay;
           const lastOfGroup = !next || next.senderId !== m.senderId || next.createdAt - m.createdAt >= GROUP_GAP;
+          if (m.kind === 'plan' && m.data) {
+            return (
+              <Fragment key={m.id}>
+                {newDay && <div className="day-sep">{longDate(m.createdAt)}</div>}
+                <PlanCard message={m} otherName={other.name} matchId={id} />
+              </Fragment>
+            );
+          }
           if (m.kind === 'system') {
             return (
               <Fragment key={m.id}>
@@ -340,6 +396,32 @@ export function Chat() {
           </div>
         )}
       </div>
+
+      {match.coincide && !match.closed && (
+        <div className="pulse-card coincide-card" role="region" aria-label="Coincidir">
+          {match.coincide.mySlots ? (
+            <div className="coincide-row">
+              <p>
+                <strong>📅 Has marcado {match.coincide.mySlots.length} huecos en secreto.</strong> Cuando {other.name}{' '}
+                marque los suyos, os diremos cuándo coincidís.
+              </p>
+              <button className="btn btn-sm" onClick={() => setDialog('coincide')}>
+                Cambiar
+              </button>
+            </div>
+          ) : (
+            <div className="coincide-row">
+              <p>
+                <strong>📅 ¿Quedamos?</strong> Marca en secreto cuándo podrías esta semana: solo os diremos cuándo
+                coincidís.
+              </p>
+              <button className="btn btn-primary btn-sm" onClick={() => setDialog('coincide')}>
+                Marcar huecos
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {match.pulse && !match.closed && (
         <div className="pulse-card" role="region" aria-label="Pulso">
@@ -412,6 +494,14 @@ export function Chat() {
       )}
       {dialog === 'report' && (
         <ReportDialog user={other} onClose={() => setDialog(null)} onDone={() => navigate('/matches', { replace: true })} />
+      )}
+      {dialog === 'coincide' && (
+        <AvailabilityPicker
+          name={other.name}
+          initial={match.coincide?.mySlots}
+          onSave={saveSlots}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog === 'pulse' && (
         <ConfirmDialog

@@ -50,6 +50,14 @@ function Shell() {
       onClick: () => navigate('/a-ciegas'),
     });
   });
+  useSocketEvent('coincide:changed', ({ matchId, pending }) => {
+    if (!pending || pathname === `/chat/${matchId}`) return;
+    toast('📅 ¡Te proponen quedar! Marca en secreto cuándo puedes', {
+      type: 'match',
+      duration: 6000,
+      onClick: () => navigate(`/chat/${matchId}`),
+    });
+  });
   useSocketEvent('pulse:changed', ({ matchId, pending }) => {
     if (!pending || pathname === `/chat/${matchId}`) return;
     toast('💓 Tienes un Pulso pendiente: ¿seguís hablando?', {

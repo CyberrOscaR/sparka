@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import multer from 'multer';
 import { requireAuth } from './auth.js';
 import { createBlind } from './blind.js';
+import { createCoincide } from './coincide.js';
 import { CITIES, GENDERS, INTENTIONS, INTERESTS, LIMITS, PROMPTS, REPORT_REASONS } from './catalog.js';
 import { config as defaultConfig } from './config.js';
 import { openDb } from './db.js';
@@ -51,6 +52,7 @@ export function createApp(overrides = {}) {
   const ctx = { db, cfg, notify };
   ctx.blind = createBlind(ctx);
   ctx.pulse = createPulse(ctx);
+  ctx.coincide = createCoincide(ctx);
   ctx.demo = cfg.demoMode
     ? createDemo(ctx, {
         replyDelayMs: cfg.demoReplyDelayMs,

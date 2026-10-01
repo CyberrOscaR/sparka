@@ -130,7 +130,11 @@ const COLUMNS = [
   ['matches', 'pulse_a', 'TEXT'], // voto secreto de user_a: 'yes' | null
   ['matches', 'pulse_b', 'TEXT'],
   ['matches', 'last_pulse_at', 'INTEGER'],
-  ['messages', 'kind', "TEXT NOT NULL DEFAULT 'text'"], // 'text' | 'system' | 'blind'
+  ['messages', 'kind', "TEXT NOT NULL DEFAULT 'text'"], // 'text' | 'system' | 'blind' | 'plan'
+  ['messages', 'data', 'TEXT'], // JSON con datos extra (p. ej. el plan de "Coincidir")
+  ['matches', 'coincide_started_at', 'INTEGER'],
+  ['matches', 'coincide_a', 'TEXT'], // huecos secretos de user_a (JSON)
+  ['matches', 'coincide_b', 'TEXT'],
 ];
 
 function migrate(db) {

@@ -4,13 +4,13 @@ import { postMessage } from '../matchmaker.js';
 import { analyzeMessage } from '../safety.js';
 import { getMatchFor, getPhotoUrls, getProfile, publicProfileFor, serializeMessage } from '../store.js';
 import { activityLabel } from '../matching.js';
-import { HttpError, idParam, messageSchema, parse, pulseVoteSchema } from '../validation.js';
+import { HttpError, coincideSchema, idParam, messageSchema, parse, pulseVoteSchema } from '../validation.js';
 import { requireCompleteProfile } from './discover.js';
 
 const PAGE_SIZE = 50;
 
 export function matchRoutes(ctx) {
-  const { db, notify, demo, pulse } = ctx;
+  const { db, notify, demo, pulse, coincide } = ctx;
   const router = Router();
   const complete = requireCompleteProfile(db);
   const messageLimiter = rateLimit({
@@ -50,6 +50,10 @@ export function matchRoutes(ctx) {
           source: r.source,
           closed: Boolean(state.closed),
           pulsePending: Boolean(state.pulse && !state.pulse.myVote),
+          coincidePending: (() => {
+            const c = coincide.stateFor(r, me).coincide;
+            return Boolean(c && !c.mySlots);
+          })(),
           user: {
             id: other.userId,
             name: other.name,
@@ -75,12 +79,24 @@ export function matchRoutes(ctx) {
       source: match.source,
       user: publicProfileFor(db, match.otherId, req.me),
       ...pulse.stateFor(match, req.userId),
+      ...coincide.stateFor(match, req.userId),
     });
   });
 
   /** "Tomar el Pulso": pregunta secreta a los dos sobre si seguir. */
   router.post('/matches/:id/pulse', complete, (req, res) => {
     res.json(pulse.startManual(idParam(req.params.id), req.userId));
+  });
+
+  /** Coincidir: empezar a buscar cuándo podéis quedar. */
+  router.post('/matches/:id/coincide', complete, (req, res) => {
+    res.json(coincide.start(idParam(req.params.id), req.userId));
+  });
+
+  /** Coincidir: tus huecos secretos de la semana. */
+  router.put('/matches/:id/coincide', complete, (req, res) => {
+    const { slots } = parse(coincideSchema, req.body);
+    res.json(coincide.submit(idParam(req.params.id), req.userId, slots));
   });
 
   router.post('/matches/:id/pulse/vote', complete, (req, res) => {

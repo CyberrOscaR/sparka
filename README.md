@@ -24,11 +24,24 @@ Cuando una conversación lleva 48 h en silencio (o cuando alguien lo pide desde 
 - **Sin respuesta en 3 días** → se cierra sola.
 - Tu “sí” **solo se revela si es mutuo**: nunca te expones.
 
+### 📅 Coincidir: la cita, cuadrada en secreto
+
+El paso que más cuesta en una app de citas es pasar del chat a quedar: el “¿y tú cuándo puedes?”, el miedo a un “no puedo”… y la conversación que se apaga. En Sparka:
+
+1. Cualquiera de los dos pulsa **¿Cuándo coincidimos?** en el chat.
+2. Cada persona marca **en secreto** sus huecos de los próximos 7 días (mañana, tarde o noche). Hay atajos como “todas las tardes” o “fin de semana”.
+3. Sparka **solo revela las coincidencias**: el mejor momento, otras opciones y una idea de plan según vuestros intereses comunes, con un botón **Añadir al calendario** (`.ics`) y un recordatorio de seguridad.
+4. Nadie ve nunca la agenda de la otra persona ni cuándo “no puede”. Si no coincidís, Sparka lo dice sin culpar a nadie.
+
 <p align="center">
   <img src="docs/screenshots/a-ciegas.png" width="200" alt="A ciegas: la Pregunta del Día">
   <img src="docs/screenshots/revelacion.png" width="200" alt="Revelación del match a ciegas">
   <img src="docs/screenshots/pulso.png" width="200" alt="El Pulso">
   <img src="docs/screenshots/pulso-mutuo.png" width="200" alt="Pulso mutuo">
+</p>
+<p align="center">
+  <img src="docs/screenshots/coincidir.png" width="200" alt="Coincidir: huecos secretos">
+  <img src="docs/screenshots/coincidir-plan.png" width="200" alt="Coincidir: el plan">
 </p>
 
 ## Además: todo gratis
@@ -46,6 +59,7 @@ Sparka también hace lo que ya conoces (deslizar, hacer match y chatear), pero s
 |---|---|---|
 | Conocer gente por lo que piensa, sin ver fotos | No | ✅ **A ciegas**, cada día |
 | Qué pasa cuando alguien deja de contestar | Ghosting | ✅ **El Pulso**: cierre amable o plan mutuo |
+| Pasar del chat a la cita | “¿Y tú cuándo puedes?” | ✅ **Coincidir**: huecos secretos, solo se revela lo común |
 | Ver quién te ha dado like | Normalmente de pago | ✅ Gratis |
 | Likes | Limitados al día | ✅ Ilimitados |
 | Deshacer el último swipe | Normalmente de pago | ✅ Gratis |
@@ -86,7 +100,7 @@ npm run dev
 
 Abre **http://localhost:5173**, crea una cuenta y completa tu perfil.
 
-> **Modo demo:** la primera vez se crean ~540 perfiles de ejemplo repartidos por 20 ciudades de España y Latinoamérica para que puedas probarlo todo: algunos ya te habrán dado like, devuelven likes, contestan en el chat, responden a la Pregunta del Día, dan chispas a tu respuesta y votan en el Pulso. Están **siempre marcados como “Demo”** y no pueden iniciar sesión. Desactívalo en producción con `DEMO_MODE=false`.
+> **Modo demo:** la primera vez se crean ~540 perfiles de ejemplo repartidos por 20 ciudades de España y Latinoamérica para que puedas probarlo todo: algunos ya te habrán dado like, devuelven likes, contestan en el chat, responden a la Pregunta del Día, dan chispas a tu respuesta, votan en el Pulso y marcan sus huecos en Coincidir. Están **siempre marcados como “Demo”** y no pueden iniciar sesión. Desactívalo en producción con `DEMO_MODE=false`.
 
 ### Producción
 
@@ -127,6 +141,7 @@ server/            API (Express 5) + tiempo real (Socket.IO) + SQLite (node:sqli
   blind.js         "A ciegas": pregunta del día, feed anónimo y match a ciegas
   blindQuestions.js  Las preguntas (y respuestas de ejemplo para el modo demo)
   pulse.js         El Pulso: votos secretos, cierre amable y caducidad
+  coincide.js      Coincidir: huecos secretos y plan con lo que tenéis en común
   matchmaker.js    Crear matches y publicar mensajes (lo usan swipes, A ciegas y Pulso)
   demo.js          Perfiles demo y su comportamiento
   routes/          auth · me (perfil, fotos, preferencias) · discover (swipes, likes) · matches (chat) · safety
@@ -162,10 +177,11 @@ tests/             node:test + supertest + socket.io-client
 | `POST` / `DELETE` | `/api/blind/answers/:id/like` | Dar o retirar una chispa a una respuesta |
 | `GET` / `DELETE` | `/api/matches[/:id]` | Matches / deshacer match |
 | `POST` | `/api/matches/:id/pulse` · `…/pulse/vote` | Tomar el Pulso / votar en secreto (`yes`/`no`) |
+| `POST` / `PUT` | `/api/matches/:id/coincide` | Empezar a buscar cuándo coincidís / guardar tus huecos secretos |
 | `GET` / `POST` | `/api/matches/:id/messages` · `POST …/read` | Chat |
 | `POST` | `/api/users/:id/block` · `/api/users/:id/report` | Bloquear y denunciar |
 
-Eventos de Socket.IO: `match:new`, `match:removed`, `likes:changed`, `message:new`, `message:read`, `typing`, `blind:liked`, `pulse:changed`.
+Eventos de Socket.IO: `match:new`, `match:removed`, `likes:changed`, `message:new`, `message:read`, `typing`, `blind:liked`, `pulse:changed`, `coincide:changed`.
 
 ## Próximos pasos
 

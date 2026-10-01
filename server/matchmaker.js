@@ -22,10 +22,10 @@ export function createMatch({ db, notify }, actorId, otherId, { source = 'swipe'
 }
 
 /** Guarda un mensaje y lo entrega en tiempo real a las dos personas del match. */
-export function postMessage({ db, notify }, matchId, senderId, body, { flag = null, kind = 'text' } = {}) {
+export function postMessage({ db, notify }, matchId, senderId, body, { flag = null, kind = 'text', data = null } = {}) {
   const { lastInsertRowid } = db
-    .prepare('INSERT INTO messages (match_id, sender_id, body, flag, kind, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(matchId, senderId, body, flag, kind, Date.now());
+    .prepare('INSERT INTO messages (match_id, sender_id, body, flag, kind, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(matchId, senderId, body, flag, kind, data ? JSON.stringify(data) : null, Date.now());
   const message = serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(lastInsertRowid));
   const m = db.prepare('SELECT user_a, user_b FROM matches WHERE id = ?').get(matchId);
   notify(m.user_a, 'message:new', message);
