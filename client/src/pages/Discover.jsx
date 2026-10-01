@@ -197,7 +197,7 @@ export function Discover() {
         </Empty>
       ) : (
         <>
-          <div className="deck">
+          <div className={`deck ${counts.blind && !counts.blind.answered ? 'compact' : ''}`}>
             {cards.map(({ p, i, exit }) => (
               <SwipeCard
                 key={p.id}

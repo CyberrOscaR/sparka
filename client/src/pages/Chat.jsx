@@ -295,7 +295,8 @@ export function Chat() {
         <div className="chat-intro">
           <Avatar user={other} size={84} />
           <strong>
-            {match.source === 'blind' ? '🙈 Match a ciegas' : 'Hicisteis match'} el {longDate(match.createdAt)}
+            {match.source === 'blind' ? '🙈 Match a ciegas' : match.source === 'auto' ? '✨ Autocita' : 'Hicisteis match'} el{' '}
+            {longDate(match.createdAt)}
           </strong>
           {match.source === 'blind' && (
             <p>Os gustó lo que pensáis antes de veros. Estas fueron vuestras respuestas: ¡empezad por ahí!</p>
@@ -332,6 +333,28 @@ export function Chat() {
           const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
           const grouped = prev && prev.senderId === m.senderId && m.createdAt - prev.createdAt < GROUP_GAP && !newDay;
           const lastOfGroup = !next || next.senderId !== m.senderId || next.createdAt - m.createdAt >= GROUP_GAP;
+          if (m.kind === 'autocita' && m.data) {
+            return (
+              <Fragment key={m.id}>
+                {newDay && <div className="day-sep">{longDate(m.createdAt)}</div>}
+                <div className="autocita-msg" role="note">
+                  <span className="eyebrow">✨ Autocita · {m.data.score} % de afinidad</span>
+                  {m.data.reasons.length > 0 && (
+                    <ul>
+                      {m.data.reasons.map((r) => (
+                        <li key={r}>{r}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <p>
+                    <strong>Plan:</strong> {m.data.idea}
+                    {m.data.because && ` (porque ${m.data.because})`}.
+                  </p>
+                  <small>Ahora marcad en secreto cuándo podéis y os diremos cuándo coincidís 📅</small>
+                </div>
+              </Fragment>
+            );
+          }
           if (m.kind === 'plan' && m.data) {
             return (
               <Fragment key={m.id}>

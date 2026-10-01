@@ -99,6 +99,18 @@ export function createCoincide(ctx) {
     for (const id of [m.user_a, m.user_b]) notify(id, 'coincide:changed', { matchId: m.id });
   }
 
+  /** Lo lanza Sparka (p. ej. al confirmarse una autocita): las dos personas tienen que marcar. */
+  function startForBoth(matchId) {
+    const m = load(matchId);
+    if (!m || m.closed_at || isActive(m)) return;
+    db.prepare('UPDATE matches SET coincide_started_at = ?, coincide_a = NULL, coincide_b = NULL WHERE id = ?').run(
+      Date.now(),
+      m.id,
+    );
+    for (const id of [m.user_a, m.user_b]) notify(id, 'coincide:changed', { matchId: m.id, pending: true, auto: true });
+    ctx.demo?.onCoincideStarted(m.id);
+  }
+
   /** Guarda tus huecos (puedes cambiarlos hasta que la otra persona marque los suyos). */
   function submit(matchId, userId, slots, now = Date.now()) {
     const m = loadFor(matchId, userId);
@@ -116,5 +128,5 @@ export function createCoincide(ctx) {
     return stateFor(load(m.id), userId);
   }
 
-  return { stateFor, start, submit, isActive };
+  return { stateFor, start, startForBoth, submit, isActive };
 }

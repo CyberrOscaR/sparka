@@ -4,7 +4,7 @@ import { getProfile, pairOf, publicProfileFor, serializeMessage } from './store.
 
 /**
  * Crea el match entre `actorId` (quien lo provoca) y `otherId`.
- * `intro`: mensajes con los que empieza la conversación ({ senderId, body, kind, createdAt }).
+ * `intro`: mensajes con los que empieza la conversación ({ senderId, body, kind, data, createdAt }).
  */
 export function createMatch({ db, notify }, actorId, otherId, { source = 'swipe', intro = [] } = {}) {
   const [a, b] = pairOf(actorId, otherId);
@@ -13,8 +13,12 @@ export function createMatch({ db, notify }, actorId, otherId, { source = 'swipe'
     const { lastInsertRowid } = db
       .prepare('INSERT INTO matches (user_a, user_b, created_at, source) VALUES (?, ?, ?, ?)')
       .run(a, b, now, source);
-    const insert = db.prepare('INSERT INTO messages (match_id, sender_id, body, kind, created_at) VALUES (?, ?, ?, ?, ?)');
-    for (const m of intro) insert.run(lastInsertRowid, m.senderId, m.body, m.kind ?? 'text', m.createdAt ?? now);
+    const insert = db.prepare(
+      'INSERT INTO messages (match_id, sender_id, body, kind, data, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    );
+    for (const m of intro) {
+      insert.run(lastInsertRowid, m.senderId, m.body, m.kind ?? 'text', m.data ? JSON.stringify(m.data) : null, m.createdAt ?? now);
+    }
     return Number(lastInsertRowid);
   });
   notify(otherId, 'match:new', { matchId, source, user: publicProfileFor(db, actorId, getProfile(db, otherId)) });

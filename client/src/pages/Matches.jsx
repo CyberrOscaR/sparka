@@ -85,6 +85,11 @@ export function Matches() {
                         <div className="convo-top">
                           <strong>
                             {m.user.name} {m.user.isDemo && <DemoBadge />}
+                            {m.source === 'auto' && (
+                              <span className="badge badge-brand" title="Autocita">
+                                ✨
+                              </span>
+                            )}
                             {m.source === 'blind' && (
                               <span className="badge" title="Match a ciegas">
                                 🙈

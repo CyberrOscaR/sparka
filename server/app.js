@@ -6,15 +6,17 @@ import express from 'express';
 import helmet from 'helmet';
 import multer from 'multer';
 import { requireAuth } from './auth.js';
+import { createAutocitas } from './autocitas.js';
 import { createBlind } from './blind.js';
 import { createCoincide } from './coincide.js';
 import { CITIES, GENDERS, INTENTIONS, INTERESTS, LIMITS, PROMPTS, REPORT_REASONS } from './catalog.js';
 import { config as defaultConfig } from './config.js';
 import { openDb } from './db.js';
-import { createDemo, hasDemoProfiles, seedDemoProfiles } from './demo.js';
+import { createDemo, ensureDemoAutocitaProfiles, hasDemoProfiles, seedDemoProfiles } from './demo.js';
 import { createPulse } from './pulse.js';
 import { attachRealtime } from './realtime.js';
 import { authRoutes } from './routes/auth.js';
+import { autocitaRoutes } from './routes/autocitas.js';
 import { blindRoutes } from './routes/blind.js';
 import { discoverRoutes } from './routes/discover.js';
 import { matchRoutes } from './routes/matches.js';
@@ -27,6 +29,7 @@ export function createApp(overrides = {}) {
   const db = overrides.db ?? openDb(cfg.dbFile);
   fs.mkdirSync(cfg.uploadDir, { recursive: true });
   if (cfg.demoMode && !hasDemoProfiles(db)) seedDemoProfiles(db);
+  if (cfg.demoMode) ensureDemoAutocitaProfiles(db);
 
   const app = express();
   if (cfg.trustProxy) app.set('trust proxy', 1);
@@ -53,6 +56,7 @@ export function createApp(overrides = {}) {
   ctx.blind = createBlind(ctx);
   ctx.pulse = createPulse(ctx);
   ctx.coincide = createCoincide(ctx);
+  ctx.autocitas = createAutocitas(ctx);
   ctx.demo = cfg.demoMode
     ? createDemo(ctx, {
         replyDelayMs: cfg.demoReplyDelayMs,
@@ -87,6 +91,7 @@ export function createApp(overrides = {}) {
     meRoutes(ctx),
     discoverRoutes(ctx),
     blindRoutes(ctx),
+    autocitaRoutes(ctx),
     matchRoutes(ctx),
     safetyRoutes(ctx),
   );

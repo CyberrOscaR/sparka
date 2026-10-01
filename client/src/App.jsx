@@ -1,12 +1,13 @@
 import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { Flame, Heart, MessageCircle, UserRound, VenetianMask } from 'lucide-react';
+import { Flame, Heart, MessageCircle, UserRound, VenetianMask, WandSparkles } from 'lucide-react';
 import { AuthProvider, useAuth } from './lib/auth.jsx';
 import { MetaProvider } from './lib/meta.jsx';
 import { RealtimeProvider, useRealtime, useSocketEvent } from './lib/realtime.jsx';
 import { ToastProvider, useToast } from './lib/toast.jsx';
 import { BlindReveal } from './components/BlindReveal.jsx';
 import { Logo } from './components/ui.jsx';
+import { Autocitas } from './pages/Autocitas.jsx';
 import { Blind } from './pages/Blind.jsx';
 import { Chat } from './pages/Chat.jsx';
 import { Discover } from './pages/Discover.jsx';
@@ -37,6 +38,13 @@ function Shell() {
   // Avisos globales: matches, chispas anónimas y Pulsos pendientes, estés en la pantalla que estés.
   useSocketEvent('match:new', ({ matchId, user, source }) => {
     if (source === 'blind') return setReveal({ id: matchId, user });
+    if (source === 'auto') {
+      return toast(`✨ ¡Autocita confirmada con ${user.name}! Toca para cuadrar la hora`, {
+        type: 'match',
+        duration: 7000,
+        onClick: () => navigate(`/chat/${matchId}`),
+      });
+    }
     toast(`¡Nuevo match con ${user.name}! 💘 Toca para escribirle`, {
       type: 'match',
       duration: 6000,
@@ -50,9 +58,17 @@ function Shell() {
       onClick: () => navigate('/a-ciegas'),
     });
   });
-  useSocketEvent('coincide:changed', ({ matchId, pending }) => {
+  useSocketEvent('autocita:new', ({ score }) => {
+    if (pathname === '/autocitas') return;
+    toast(`✨ ¡Sparka te ha encontrado una autocita! ${score} % de afinidad`, {
+      type: 'match',
+      duration: 6000,
+      onClick: () => navigate('/autocitas'),
+    });
+  });
+  useSocketEvent('coincide:changed', ({ matchId, pending, auto }) => {
     if (!pending || pathname === `/chat/${matchId}`) return;
-    toast('📅 ¡Te proponen quedar! Marca en secreto cuándo puedes', {
+    toast(auto ? '📅 Marca en secreto cuándo puedes quedar' : '📅 ¡Te proponen quedar! Marca en secreto cuándo puedes', {
       type: 'match',
       duration: 6000,
       onClick: () => navigate(`/chat/${matchId}`),
@@ -74,6 +90,13 @@ function Shell() {
         <Logo size={32} />
         <NavItem to="/" end icon={Flame} label="Descubrir" />
         <NavItem to="/a-ciegas" icon={VenetianMask} label="A ciegas" dot={counts.blind && !counts.blind.answered} />
+        <NavItem
+          to="/autocitas"
+          icon={WandSparkles}
+          label="Autocitas"
+          badge={counts.autocitas}
+          dot={counts.autocitasEnabled === false}
+        />
         <NavItem to="/le-gustas" icon={Heart} label="Le gustas" badge={counts.likes} />
         <NavItem to="/matches" icon={MessageCircle} label="Matches" badge={counts.unread} />
         <NavItem to="/perfil" icon={UserRound} label="Perfil" />
@@ -82,6 +105,7 @@ function Shell() {
         <Routes>
           <Route path="/" element={<Discover />} />
           <Route path="/a-ciegas" element={<Blind />} />
+          <Route path="/autocitas" element={<Autocitas />} />
           <Route path="/le-gustas" element={<Likes />} />
           <Route path="/matches" element={<Matches />} />
           <Route path="/chat/:matchId" element={<Chat />} />

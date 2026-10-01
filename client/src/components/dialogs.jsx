@@ -7,22 +7,28 @@ import { useToast } from '../lib/toast.jsx';
 import { Avatar, Modal } from './ui.jsx';
 
 /** Pantalla de "¡Es un match!". */
-export function MatchOverlay({ match, onClose }) {
+export function MatchOverlay({
+  match,
+  onClose,
+  title = '¡Es un match!',
+  subtitle = `A ${match.user.name} y a ti os gustáis. ¡Rompe el hielo!`,
+  cta = 'Enviar un mensaje',
+}) {
   const { me } = useAuth();
   const navigate = useNavigate();
   const self = { id: me.id, name: me.profile.name, photo: me.photos[0]?.url };
   return (
     <div className="match-overlay" role="dialog" aria-modal="true" aria-labelledby="match-title">
       <div>
-        <h2 id="match-title">¡Es un match!</h2>
-        <p>A {match.user.name} y a ti os gustáis. ¡Rompe el hielo!</p>
+        <h2 id="match-title">{title}</h2>
+        <p>{subtitle}</p>
         <div className="match-avatars">
           <Avatar user={self} size={128} />
           <Avatar user={match.user} size={128} />
         </div>
         <div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}>
           <button className="btn btn-light" onClick={() => navigate(`/chat/${match.id}`)} autoFocus>
-            Enviar un mensaje
+            {cta}
           </button>
           <button className="btn btn-outline" onClick={onClose}>
             Seguir descubriendo

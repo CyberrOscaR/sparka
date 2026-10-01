@@ -213,6 +213,8 @@ button.chip:hover { border-color: var(--brand); }
 .spark-count { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--spark); }
 .deck { position: relative; width: 100%; max-width: 440px; height: min(620px, calc(100vh - 260px)); min-height: 420px; }
 @media (min-width: 900px) { .deck { height: min(640px, calc(100vh - 200px)); } }
+.deck.compact { height: min(560px, calc(100vh - 350px)); min-height: 380px; }
+@media (min-width: 900px) { .deck.compact { height: min(600px, calc(100vh - 280px)); } }
 .swipe-card {
   position: absolute; inset: 0; border-radius: 24px; overflow: hidden; background: var(--surface-2);
   box-shadow: var(--shadow-lg); touch-action: none; user-select: none; will-change: transform;
@@ -531,3 +533,50 @@ kbd { padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); bac
 .plan-card p { margin: 0; }
 .plan-more { color: var(--muted); font-size: 0.88rem; }
 .plan-safety { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.8rem; }
+
+/* ---------- Autocitas ---------- */
+.autocitas { display: grid; gap: 16px; }
+.autocitas .page-header, .autocitas .page-sub { margin-bottom: 0; }
+.autocitas .page-sub { margin-top: -8px; }
+.ac-proposals { display: grid; gap: 12px; }
+.ac-proposals .section-title { margin: 0; }
+.autocita-card { padding: 18px; border-radius: 22px; background: var(--surface); border: 2px solid transparent; background-image: linear-gradient(var(--surface), var(--surface)), var(--grad); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: var(--shadow); display: grid; gap: 12px; }
+.ac-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ac-who { display: flex; align-items: center; gap: 12px; border: none; background: none; padding: 0; text-align: left; min-width: 0; }
+.ac-who > span { display: grid; gap: 2px; min-width: 0; }
+.ac-who strong { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; }
+.ac-who small { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.ac-score { display: grid; justify-items: center; flex-shrink: 0; }
+.ac-score strong { font-size: 1.7rem; font-weight: 900; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ac-score small { color: var(--muted); font-size: 0.75rem; margin-top: -4px; }
+.ac-reasons { margin: 0; padding-left: 18px; font-size: 0.93rem; line-height: 1.5; }
+.ac-plan { padding: 12px 14px; border-radius: 14px; background: var(--brand-soft); }
+.ac-plan .eyebrow { color: var(--brand); margin-bottom: 4px; }
+.ac-plan p { margin: 0; }
+.ac-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.ac-waiting { margin: 0; font-size: 0.92rem; color: var(--muted); }
+.ac-switch { display: grid; gap: 14px; }
+.ac-progress { display: grid; gap: 6px; }
+.ac-group { display: grid; gap: 10px; }
+.ac-group > h2 { font-size: 1.15rem; margin-top: 4px; }
+.ac-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); color: var(--muted); font-size: 0.88rem; }
+.ac-note svg { flex-shrink: 0; margin-top: 3px; }
+.ac-question { padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); display: grid; gap: 10px; }
+.ac-question.answered { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); }
+.ac-q-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ac-q-head .badge { display: inline-flex; gap: 3px; }
+.ac-importance { display: grid; gap: 6px; font-size: 0.8rem; color: var(--muted); }
+.segmented.mini button { padding: 6px 4px; font-size: 0.78rem; }
+.autocita-msg { align-self: center; width: min(100%, 440px); margin: 10px 0; padding: 16px; border-radius: 20px; background: var(--surface); border: 2px solid var(--brand); box-shadow: var(--shadow); display: grid; gap: 8px; font-size: 0.93rem; }
+.autocita-msg .eyebrow { color: var(--brand); margin: 0; }
+.autocita-msg ul { margin: 0; padding-left: 18px; }
+.autocita-msg p { margin: 0; }
+.autocita-msg small { color: var(--muted); }
+
+/* Menú con 6 secciones en móvil */
+@media (max-width: 899px) {
+  .nav-link { flex: 1; min-width: 0; padding: 6px 2px; font-size: 0.66rem; }
+  .nav-link span:not(.nav-badge):not(.nav-dot) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .nav-badge { right: 10%; }
+  .nav-dot { right: 22%; }
+}

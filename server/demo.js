@@ -1,5 +1,6 @@
 // Modo demo: perfiles de ejemplo, siempre marcados como "Demo" en la interfaz,
 // para que la app no esté vacía al probarla. Desactívalo en producción (DEMO_MODE=false).
+import { AUTOCITA_QUESTIONS } from './autocitaQuestions.js';
 import { questionForDay } from './blind.js';
 import { CITIES, INTERESTS, PROMPTS, interestById, promptById } from './catalog.js';
 import { transaction } from './db.js';
@@ -179,6 +180,39 @@ const REPLIES = [
   '¿Cuál ha sido tu mejor viaje hasta ahora?',
   'Totalmente. ¿Qué es lo que más te gusta hacer un finde?',
 ];
+
+// Cuatro "personalidades" para los cuestionarios de Autocitas de los perfiles demo (con algo de variación),
+// para que haya gente realmente compatible con distintos tipos de persona.
+const ARCHETYPES = [
+  { finde: ['ciudad', 'fiesta'], musica: ['rock', 'electronica'], comida: ['restaurantes', 'picante'], viajes: 'mucho', mascotas: 'encantan', deporte: 'aveces', social: 'social', orden: 'normal', politica: 'izquierda', religion: 'ateo', feminismo: 'si', relacion: 'hablar', hijos: 'nose', ecologia: 'actuo', fumar: 'social', beber: 'social', trabajo: 'equilibrio', dinero: 'momento' },
+  { finde: ['casa', 'naturaleza'], musica: ['pop', 'latina'], comida: ['casera', 'dulce'], viajes: 'algo', mascotas: 'encantan', deporte: 'aveces', social: 'equilibrio', orden: 'impecable', politica: 'centroder', religion: 'creyente', feminismo: 'parte', relacion: 'mono', hijos: 'quiero', ecologia: 'preocupa', fumar: 'no', beber: 'social', trabajo: 'equilibrio', dinero: 'ahorro' },
+  { finde: ['naturaleza', 'viaje'], musica: ['rock', 'electronica'], comida: ['todo', 'picante'], viajes: 'mochila', mascotas: 'encantan', deporte: 'vida', social: 'social', orden: 'normal', politica: 'centro', religion: 'agnostico', feminismo: 'si', relacion: 'mono', hijos: 'nose', ecologia: 'actuo', fumar: 'no', beber: 'social', trabajo: 'vivir', dinero: 'momento' },
+  { finde: ['casa', 'ciudad'], musica: ['cantautor', 'clasica'], comida: ['veggie', 'casera'], viajes: 'algo', mascotas: 'encantan', deporte: 'nada', social: 'casero', orden: 'caos', politica: 'centroizq', religion: 'espiritual', feminismo: 'si', relacion: 'mono', hijos: 'no', ecologia: 'actuo', fumar: 'no', beber: 'nunca', trabajo: 'vivir', dinero: 'equilibrio' },
+];
+
+export function ensureDemoAutocitaProfiles(db, now = Date.now()) {
+  if (db.prepare('SELECT 1 FROM autocita_profiles ap JOIN profiles p ON p.user_id = ap.user_id WHERE p.is_demo = 1 LIMIT 1').get()) {
+    return;
+  }
+  const rand = mulberry32(7);
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO autocita_profiles (user_id, enabled, answers, updated_at) VALUES (?, 1, ?, ?)',
+  );
+  transaction(db, () => {
+    for (const { user_id: id } of db.prepare('SELECT user_id FROM profiles WHERE is_demo = 1').all()) {
+      const base = ARCHETYPES[id % ARCHETYPES.length];
+      const answers = {};
+      for (const q of AUTOCITA_QUESTIONS) {
+        let value = base[q.id];
+        if (rand() < 0.2) {
+          value = q.type === 'multi' ? pickMany(rand, q.options, 1 + Math.floor(rand() * q.max)).map((o) => o.id) : pick(rand, q.options).id;
+        }
+        answers[q.id] = { value, importance: rand() < 0.2 ? 'mucho' : 'importa' };
+      }
+      insert.run(id, JSON.stringify(answers), now);
+    }
+  });
+}
 
 function seedFrom(text) {
   let h = 2166136261;
@@ -381,6 +415,22 @@ export function createDemo(
     }
   }
 
+  /** Los perfiles demo se apuntan a casi todas las autocitas que les propone Sparka. */
+  function onAutocitaProposed(autocitaId) {
+    const r = db.prepare('SELECT user_a, user_b FROM autocitas WHERE id = ?').get(autocitaId);
+    for (const id of [r.user_a, r.user_b]) {
+      if (!getProfile(db, id)?.isDemo) continue;
+      const answer = random() < 0.85 ? 'yes' : 'no';
+      later(delay() * 2, () => {
+        try {
+          ctx.autocitas.respond(id, autocitaId, answer);
+        } catch {
+          // Ya no está disponible.
+        }
+      });
+    }
+  }
+
   function stop() {
     for (const t of pendingTimers) clearTimeout(t);
     pendingTimers.clear();
@@ -395,6 +445,7 @@ export function createDemo(
     onBlindLiked,
     onPulseStarted,
     onCoincideStarted,
+    onAutocitaProposed,
     stop,
   };
 }

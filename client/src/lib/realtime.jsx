@@ -26,6 +26,8 @@ export function RealtimeProvider({ children }) {
     s.on('blind:liked', refresh);
     s.on('pulse:changed', refresh);
     s.on('coincide:changed', refresh);
+    s.on('autocita:new', refresh);
+    s.on('autocita:changed', refresh);
     return () => {
       s.close();
       setSocket(null);

@@ -2,7 +2,34 @@
 
 **Enamórate de cómo piensa alguien.** Sparka es la app de citas donde importa lo que piensas, no solo tu foto, y donde nadie desaparece sin decir adiós. Y todas las funciones son gratis para todo el mundo.
 
+## ▶️ Pruébala sin instalar nada
+
+[![Abrir en GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/CyberrOscaR/sparka?ref=claude%2Fcool-bardeen-0jts31)
+
+1. Pulsa el botón de arriba (necesitas una cuenta de GitHub; Codespaces incluye horas gratis cada mes).
+2. Pulsa **Create codespace** y espera un par de minutos: se instala y se arranca sola.
+3. Se abrirá una pestaña con Sparka. Si no se abre, ve a la pestaña **Ports** y abre el puerto **3001**.
+4. Crea una cuenta (puede ser un email inventado) y prueba todo: hay perfiles demo que responden, dan likes y aceptan autocitas.
+
+Cuando termines, para el codespace desde github.com/codespaces para no gastar horas.
+
 ## Solo en Sparka
+
+### ✨ Autocitas: Sparka os organiza la cita
+
+Un apartado con un cuestionario sobre **tus gustos** (plan de finde, música, comida, viajes, deporte, orden…) y **lo que piensas** (política, religión, feminismo, hijos, tipo de relación, ecología, tabaco, alcohol, trabajo, dinero). En cada pregunta eliges cuánto te importa coincidir: *me da igual*, *importa*, *mucho* o *imprescindible*.
+
+- Cuando dos personas con las Autocitas activadas llegan al **65 % de afinidad o más**, Sparka les propone una **autocita** con plan incluido según lo que tienen en común (“una ruta corta por la naturaleza y algo de picar al final”).
+- Cada persona se apunta **en secreto**. Si os apuntáis los dos, se abre el chat con la autocita y arranca **Coincidir** para cuadrar la hora. Si no, la propuesta desaparece sin más.
+- La afinidad es justa: cada respuesta se compara por cercanía (centro-izquierda está más cerca de izquierda que de derecha), pesa según lo que le importa **a cada uno** y tiene que encajar para los dos. Un «imprescindible» que no se cumple descarta la cita.
+- **Privacidad:** política, religión y demás temas personales nunca se muestran a nadie (ni en el perfil ni en la propuesta). Solo cuentan para el porcentaje, y como mucho verás «Vuestros valores encajan». Siempre se puede elegir «Prefiero no decirlo».
+- Como mucho 3 propuestas abiertas a la vez, para que sean especiales. Caducan en 3 días.
+
+<p align="center">
+  <img src="docs/screenshots/autocitas-valores.png" width="200" alt="Autocitas: cuestionario">
+  <img src="docs/screenshots/autocitas.png" width="200" alt="Autocitas: propuestas">
+  <img src="docs/screenshots/autocita-chat.png" width="200" alt="Autocita confirmada en el chat">
+</p>
 
 ### 🙈 A ciegas: la Pregunta del Día
 
@@ -57,6 +84,7 @@ Sparka también hace lo que ya conoces (deslizar, hacer match y chatear), pero s
 
 | | Apps de citas habituales | **Sparka** |
 |---|---|---|
+| Que la app te organice la cita con quien más encajas | No | ✅ **Autocitas** (+65 % de afinidad, plan incluido) |
 | Conocer gente por lo que piensa, sin ver fotos | No | ✅ **A ciegas**, cada día |
 | Qué pasa cuando alguien deja de contestar | Ghosting | ✅ **El Pulso**: cierre amable o plan mutuo |
 | Pasar del chat a la cita | “¿Y tú cuándo puedes?” | ✅ **Coincidir**: huecos secretos, solo se revela lo común |
@@ -100,7 +128,7 @@ npm run dev
 
 Abre **http://localhost:5173**, crea una cuenta y completa tu perfil.
 
-> **Modo demo:** la primera vez se crean ~540 perfiles de ejemplo repartidos por 20 ciudades de España y Latinoamérica para que puedas probarlo todo: algunos ya te habrán dado like, devuelven likes, contestan en el chat, responden a la Pregunta del Día, dan chispas a tu respuesta, votan en el Pulso y marcan sus huecos en Coincidir. Están **siempre marcados como “Demo”** y no pueden iniciar sesión. Desactívalo en producción con `DEMO_MODE=false`.
+> **Modo demo:** la primera vez se crean ~540 perfiles de ejemplo repartidos por 20 ciudades de España y Latinoamérica para que puedas probarlo todo: algunos ya te habrán dado like, devuelven likes, contestan en el chat, responden a la Pregunta del Día, dan chispas a tu respuesta, votan en el Pulso, marcan sus huecos en Coincidir y tienen su cuestionario de Autocitas (con cuatro «personalidades» distintas, para que haya gente realmente compatible contigo). Están **siempre marcados como “Demo”** y no pueden iniciar sesión. Desactívalo en producción con `DEMO_MODE=false`.
 
 ### Producción
 
@@ -142,6 +170,8 @@ server/            API (Express 5) + tiempo real (Socket.IO) + SQLite (node:sqli
   blindQuestions.js  Las preguntas (y respuestas de ejemplo para el modo demo)
   pulse.js         El Pulso: votos secretos, cierre amable y caducidad
   coincide.js      Coincidir: huecos secretos y plan con lo que tenéis en común
+  autocitas.js     Autocitas: afinidad profunda, propuestas y aceptación secreta
+  autocitaQuestions.js  El cuestionario de gustos y valores
   matchmaker.js    Crear matches y publicar mensajes (lo usan swipes, A ciegas y Pulso)
   demo.js          Perfiles demo y su comportamiento
   routes/          auth · me (perfil, fotos, preferencias) · discover (swipes, likes) · matches (chat) · safety
@@ -178,10 +208,12 @@ tests/             node:test + supertest + socket.io-client
 | `GET` / `DELETE` | `/api/matches[/:id]` | Matches / deshacer match |
 | `POST` | `/api/matches/:id/pulse` · `…/pulse/vote` | Tomar el Pulso / votar en secreto (`yes`/`no`) |
 | `POST` / `PUT` | `/api/matches/:id/coincide` | Empezar a buscar cuándo coincidís / guardar tus huecos secretos |
+| `GET` / `PUT` | `/api/autocitas` | Tu cuestionario y tus propuestas / guardar y activar (busca autocitas al guardar) |
+| `POST` | `/api/autocitas/:id/respond` | Apuntarte (`yes`) o no (`no`) a una autocita, en secreto |
 | `GET` / `POST` | `/api/matches/:id/messages` · `POST …/read` | Chat |
 | `POST` | `/api/users/:id/block` · `/api/users/:id/report` | Bloquear y denunciar |
 
-Eventos de Socket.IO: `match:new`, `match:removed`, `likes:changed`, `message:new`, `message:read`, `typing`, `blind:liked`, `pulse:changed`, `coincide:changed`.
+Eventos de Socket.IO: `match:new`, `match:removed`, `likes:changed`, `message:new`, `message:read`, `typing`, `blind:liked`, `pulse:changed`, `coincide:changed`, `autocita:new`, `autocita:changed`.
 
 ## Próximos pasos
 

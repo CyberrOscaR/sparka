@@ -15,6 +15,11 @@ const UNIQUE = [
     text: 'Si una conversación se enfría, os preguntamos en secreto si queréis seguir. Un «sí» solo se revela si es mutuo (y os proponemos un plan). Un «no» se despide con cariño. Nadie se queda esperando.',
   },
   {
+    icon: '✨',
+    title: 'Autocitas: Sparka os organiza la cita',
+    text: 'Cuéntanos tus gustos y lo que piensas (también de política o religión, en privado). Cuando alguien encaje contigo al 65 % o más, os proponemos una cita con plan incluido. Si los dos os apuntáis, buscamos hora.',
+  },
+  {
     icon: '📅',
     title: 'Coincidir: la cita, cuadrada en secreto',
     text: 'Se acabó el «¿y tú cuándo puedes?». Cada cual marca en secreto sus huecos de la semana y Sparka solo os dice cuándo coincidís, con una idea de plan y directo a tu calendario. Nadie ve tu agenda ni cuándo no puedes.',

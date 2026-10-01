@@ -111,6 +111,21 @@ export const coincideSchema = z.object({
     .max(30, 'Demasiados huecos.'),
 });
 
+export const autocitaProfileSchema = z.object({
+  enabled: z.boolean(),
+  answers: z.record(
+    z.string(),
+    z.object({
+      value: z.union([z.string(), z.array(z.string())]),
+      importance: z.string(),
+    }),
+  ),
+});
+
+export const autocitaResponseSchema = z.object({
+  answer: z.enum(['yes', 'no'], 'Responde sí o no.'),
+});
+
 export const reportSchema = z.object({
   reason: z.enum(REPORT_REASON_IDS, 'Elige un motivo.'),
   details: z.string().trim().max(1000).optional().default(''),

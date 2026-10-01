@@ -119,6 +119,32 @@ CREATE TABLE IF NOT EXISTS blind_likes (
   PRIMARY KEY (liker_id, answer_id)
 );
 CREATE INDEX IF NOT EXISTS idx_blind_likes_answer ON blind_likes(answer_id);
+
+-- Autocitas: cuestionario de gustos y valores (privado) y las citas que Sparka propone.
+CREATE TABLE IF NOT EXISTS autocita_profiles (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  enabled INTEGER NOT NULL DEFAULT 0,
+  answers TEXT NOT NULL DEFAULT '{}',
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS autocitas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_a INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_b INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  score INTEGER NOT NULL,
+  reasons TEXT NOT NULL,
+  plan TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'accepted' | 'declined' | 'expired'
+  a_response TEXT,
+  b_response TEXT,
+  match_id INTEGER,
+  created_at INTEGER NOT NULL,
+  resolved_at INTEGER,
+  UNIQUE (user_a, user_b),
+  CHECK (user_a < user_b)
+);
+CREATE INDEX IF NOT EXISTS idx_autocitas_status ON autocitas(status, created_at);
 `;
 
 // Columnas añadidas después de la primera versión (se aplican también a bases de datos existentes).
