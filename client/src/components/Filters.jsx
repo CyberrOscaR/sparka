@@ -102,6 +102,16 @@ export function FiltersForm({ onSaved, submitLabel = 'Aplicar filtros' }) {
         </span>
         <input type="checkbox" checked={prefs.incognito} onChange={(e) => set({ incognito: e.target.checked })} />
       </label>
+      {me.adult.enabled && (
+        <label className="switch">
+          <span>
+            <strong>🌶️ Solo perfiles +18</strong>
+            <br />
+            <small className="muted">Ver solo a gente que también ha activado el Modo +18.</small>
+          </span>
+          <input type="checkbox" checked={prefs.onlyAdult} onChange={(e) => set({ onlyAdult: e.target.checked })} />
+        </label>
+      )}
       <button className="btn btn-primary btn-block" disabled={busy} style={{ marginTop: 8 }}>
         {submitLabel}
       </button>

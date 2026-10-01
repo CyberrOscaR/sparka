@@ -119,6 +119,7 @@ export function SwipeCard({ profile, onSwipe, onInfo, exit, active, stackClass =
             </span>
           )}
           {profile.isDemo && <DemoBadge />}
+          {profile.adult && <span className="badge badge-adult">🌶️ +18</span>}
         </div>
         <div className="swipe-name">
           <span>{profile.name}</span>

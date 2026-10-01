@@ -1,3 +1,4 @@
+import { publicAdult } from './adultCatalog.js';
 import { CITIES, interestById, intentionById, intentionFit, promptById } from './catalog.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -58,6 +59,9 @@ export function parseProfile(row) {
     isDemo: Boolean(row.is_demo),
     completed: Boolean(row.completed),
     lastActive: row.last_active,
+    adultMode: Boolean(row.adult_mode),
+    adultProfile: JSON.parse(row.adult_profile ?? '{}'),
+    onlyAdult: Boolean(row.only_adult),
   };
 }
 
@@ -134,8 +138,12 @@ export function roundDistance(km) {
   return Math.round(km / 5) * 5;
 }
 
-/** Lo que ve otra persona de un perfil. Nunca incluye email, fecha de nacimiento ni coordenadas. */
-export function publicProfile(p, photos, viewer, now = Date.now()) {
+/**
+ * Lo que ve otra persona de un perfil. Nunca incluye email, fecha de nacimiento ni coordenadas.
+ * El lado picante (+18) solo se incluye si las dos personas tienen el Modo +18 activado
+ * (o si es tu propia vista previa: `includeAdult`).
+ */
+export function publicProfile(p, photos, viewer, now = Date.now(), { includeAdult = false } = {}) {
   const out = {
     id: p.userId,
     name: p.name,
@@ -153,6 +161,7 @@ export function publicProfile(p, photos, viewer, now = Date.now()) {
     isDemo: p.isDemo,
     activity: activityLabel(p.lastActive, now),
   };
+  if (p.adultMode && (includeAdult || viewer?.adultMode)) out.adult = publicAdult(p.adultProfile);
   if (viewer && viewer.lat != null && p.lat != null) {
     const d = distanceKm(viewer.lat, viewer.lng, p.lat, p.lng);
     out.distanceKm = roundDistance(d);

@@ -27,7 +27,21 @@ const GROUP_GAP = 5 * 60 * 1000;
 
 const HOUR = 3_600_000;
 
-function icebreakersFor(user, interestById) {
+const SPICY_ICEBREAKERS = [
+  'Verdad o reto, versión picante: empiezas tú 😏',
+  '¿Qué es lo primero que te fijas cuando alguien te atrae?',
+  'Cuéntame una fantasía que se pueda contar en una primera cita 🔥',
+  '¿Eres más de besos lentos o de ir al grano?',
+];
+
+function icebreakersFor(user, interestById, adultPair) {
+  if (adultPair) {
+    const spicy = user.adult?.prompts[0];
+    return [
+      ...(spicy ? [`Sobre «${spicy.question}»: «${spicy.answer}»… cuéntame más 😏`] : []),
+      ...SPICY_ICEBREAKERS,
+    ].slice(0, 4);
+  }
   const ideas = [];
   for (const id of user.compatibility?.sharedInterests.slice(0, 2) ?? []) {
     const i = interestById[id];
@@ -204,6 +218,7 @@ export function Chat() {
       inputRef.current?.focus();
     } catch (err) {
       if (err.code === 'confirm_offensive') setDialog({ offensive: trimmed });
+      else if (err.code === 'confirm_sexual') setDialog({ sexual: trimmed, message: err.message });
       else toast(err.message, { type: 'error' });
     }
   }
@@ -217,7 +232,11 @@ export function Chat() {
     }
   }
 
-  const icebreakers = useMemo(() => (match ? icebreakersFor(match.user, interestById) : []), [match, interestById]);
+  const icebreakers = useMemo(
+    () => (match ? icebreakersFor(match.user, interestById, match.adultPair) : []),
+    [match, interestById],
+  );
+  const [revealed, setRevealed] = useState(() => new Set());
 
   if (!match) return <Spinner />;
   const other = match.user;
@@ -383,8 +402,25 @@ export function Chat() {
                     <span className="blind-q">🙈 {blindQuestion}</span>
                     {blindAnswer.join('\n')}
                   </div>
+                ) : !mine && m.flag === 'sexual' && !revealed.has(m.id) ? (
+                  <button
+                    className="bubble hidden-bubble"
+                    onClick={() => setRevealed((s) => new Set(s).add(m.id))}
+                    aria-label="Mostrar mensaje con contenido sexual"
+                  >
+                    🌶️ Mensaje con contenido sexual. <u>Toca para verlo</u>
+                  </button>
                 ) : (
                   <div className="bubble">{m.body}</div>
+                )}
+                {!mine && m.flag === 'sexual' && (
+                  <div className="flag-warning" role="note">
+                    No tienes activado el Modo +18, por eso te llegó oculto. Si no lo querías, puedes{' '}
+                    <button className="link-btn" style={{ padding: 0 }} onClick={() => setDialog('report')}>
+                      bloquear o denunciar
+                    </button>
+                    .
+                  </div>
                 )}
                 {!mine && m.flag === 'scam' && (
                   <div className="flag-warning" role="note">
@@ -562,6 +598,16 @@ export function Chat() {
           }}
         >
           La conversación desaparecerá para las dos personas y no volveréis a veros en Descubrir.
+        </ConfirmDialog>
+      )}
+      {dialog?.sexual && (
+        <ConfirmDialog
+          title="Contenido sexual 🌶️"
+          confirmLabel="Enviar oculto"
+          onClose={() => setDialog(null)}
+          onConfirm={() => send(dialog.sexual, true)}
+        >
+          {dialog.message}
         </ConfirmDialog>
       )}
       {dialog?.offensive && (

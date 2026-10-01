@@ -27,6 +27,7 @@ const UNIQUE = [
 ];
 
 const PERKS = [
+  ['🌶️', 'Modo +18 sin tabúes', 'Habla de sexo con naturalidad con quien también lo activa. Nadie recibe lo que no ha pedido.'],
   ['👀', 'Mira quién te da like', 'Gratis. En otras apps, esto cuesta dinero.'],
   ['♾️', 'Likes ilimitados', 'Sin contador que te frene a las 12 del mediodía.'],
   ['↩️', 'Deshacer', '¿Se te escapó el dedo? Vuelve atrás sin pagar.'],

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Briefcase, ChevronLeft, ChevronRight, Heart, MapPin, MessageCircle, Sparkles, X } from 'lucide-react';
 import { useMeta } from '../lib/meta.jsx';
+import { AdultProfileBlock } from './Adult.jsx';
 import { DemoBadge, PhotoPlaceholder } from './ui.jsx';
 
 /**
@@ -131,6 +132,8 @@ export function ProfileDetails({ profile, onLike, onPass, onSpark, onCommentProm
           ))}
         </div>
       </div>
+
+      {profile.adult && <AdultProfileBlock adult={profile.adult} />}
 
       {onReport && (
         <div style={{ textAlign: 'center' }}>

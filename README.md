@@ -13,6 +13,23 @@
 
 Cuando termines, para el codespace desde github.com/codespaces para no gastar horas.
 
+## 🌶️ Para adultos y sin tabúes
+
+Sparka es **solo para mayores de 18 años** y no censura el sexo entre adultos. Lo que sí hace es respetar el consentimiento: lo explícito solo fluye entre quienes lo han elegido.
+
+- **Modo +18** (opcional): se activa en *Perfil → Ajustes* aceptando expresamente las condiciones (mayoría de edad, consentimiento, no compartir contenido íntimo ajeno).
+- **Lado picante del perfil**: orientación, qué buscas en lo íntimo (sexo casual, algo de una noche, amigos con derecho a roce, relación abierta, tríos, sexting…) y preguntas atrevidas (“Lo que más me pone…”, “En la cama soy…”, “Mi límite claro es…”). **Solo lo ven otras personas con el Modo +18.**
+- **Chat sin filtros entre dos personas +18**: se habla de sexo sin avisos (incluido el lenguaje subido de tono que fuera de contexto sería un insulto). Los insultos de verdad siguen pidiendo confirmación: eso es acoso, no sexo.
+- **Si escribes algo sexual a quien no tiene el Modo +18**, Sparka te avisa y, si lo envías, le llega **oculto** (“toca para verlo”), con la opción de bloquear o denunciar. Nada se prohíbe; nadie recibe lo que no ha pedido.
+- **Autocitas íntimas**: libido, iniciativa, dominación/sumisión, ganas de explorar, sexo en la primera cita, hablar de sexo, protección. Algunas preguntas son **complementarias** (quien domina encaja con quien prefiere que le dominen). Solo cuentan entre dos personas +18 y nunca se muestran: como mucho verás “Tenéis química en lo íntimo 🔥”.
+- Filtro **“Solo perfiles +18”**, distintivo 🌶️ en Descubrir e ideas para romper el hielo en versión picante.
+
+<p align="center">
+  <img src="docs/screenshots/modo18-consentimiento.png" width="200" alt="Activar el Modo +18">
+  <img src="docs/screenshots/modo18-perfil.png" width="200" alt="Lado picante del perfil">
+  <img src="docs/screenshots/modo18-oculto.png" width="200" alt="Mensaje sexual oculto para quien no tiene el Modo +18">
+</p>
+
 ## Solo en Sparka
 
 ### ✨ Autocitas: Sparka os organiza la cita
@@ -171,7 +188,8 @@ server/            API (Express 5) + tiempo real (Socket.IO) + SQLite (node:sqli
   pulse.js         El Pulso: votos secretos, cierre amable y caducidad
   coincide.js      Coincidir: huecos secretos y plan con lo que tenéis en común
   autocitas.js     Autocitas: afinidad profunda, propuestas y aceptación secreta
-  autocitaQuestions.js  El cuestionario de gustos y valores
+  autocitaQuestions.js  El cuestionario de gustos, valores y lo íntimo (+18)
+  adultCatalog.js  Modo +18: orientación, qué buscas y preguntas picantes
   matchmaker.js    Crear matches y publicar mensajes (lo usan swipes, A ciegas y Pulso)
   demo.js          Perfiles demo y su comportamiento
   routes/          auth · me (perfil, fotos, preferencias) · discover (swipes, likes) · matches (chat) · safety
@@ -208,6 +226,7 @@ tests/             node:test + supertest + socket.io-client
 | `GET` / `DELETE` | `/api/matches[/:id]` | Matches / deshacer match |
 | `POST` | `/api/matches/:id/pulse` · `…/pulse/vote` | Tomar el Pulso / votar en secreto (`yes`/`no`) |
 | `POST` / `PUT` | `/api/matches/:id/coincide` | Empezar a buscar cuándo coincidís / guardar tus huecos secretos |
+| `PUT` | `/api/me/adult` | Activar (con consentimiento) o desactivar el Modo +18 y editar tu lado picante |
 | `GET` / `PUT` | `/api/autocitas` | Tu cuestionario y tus propuestas / guardar y activar (busca autocitas al guardar) |
 | `POST` | `/api/autocitas/:id/respond` | Apuntarte (`yes`) o no (`no`) a una autocita, en secreto |
 | `GET` / `POST` | `/api/matches/:id/messages` · `POST …/read` | Chat |

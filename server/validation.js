@@ -8,6 +8,7 @@ import {
   PROMPT_IDS,
   REPORT_REASON_IDS,
 } from './catalog.js';
+import { ADULT_LIMITS, ADULT_LOOKING_FOR_IDS, ADULT_PROMPT_IDS, ORIENTATION_IDS } from './adultCatalog.js';
 import { ageFrom } from './matching.js';
 
 export class HttpError extends Error {
@@ -75,6 +76,29 @@ export const profileUpdateSchema = z
   .partial()
   .strict();
 
+export const adultSchema = z
+  .object({
+    enabled: z.boolean(),
+    // Activar exige aceptar expresamente: adultos, consentimiento y respeto a los límites.
+    consent: z.boolean().optional(),
+    orientation: z.enum(ORIENTATION_IDS, 'Orientación no válida.').nullable(),
+    lookingFor: z
+      .array(z.enum(ADULT_LOOKING_FOR_IDS, 'Opción no válida.'))
+      .max(ADULT_LIMITS.maxLookingFor, `Elige como mucho ${ADULT_LIMITS.maxLookingFor} opciones.`)
+      .refine((a) => new Set(a).size === a.length, 'Hay opciones repetidas.'),
+    prompts: z
+      .array(
+        z.object({
+          id: z.enum(ADULT_PROMPT_IDS),
+          answer: z.string().trim().min(1, 'Responde a la pregunta.').max(200, 'Respuesta demasiado larga (máx. 200).'),
+        }),
+      )
+      .max(ADULT_LIMITS.maxPrompts, `Puedes responder hasta ${ADULT_LIMITS.maxPrompts} preguntas picantes.`)
+      .refine((a) => new Set(a.map((p) => p.id)).size === a.length, 'Hay preguntas repetidas.'),
+  })
+  .partial()
+  .strict();
+
 export const preferencesSchema = z
   .object({
     ageMin: z.number().int().min(LIMITS.minAge).max(LIMITS.maxAge),
@@ -82,6 +106,7 @@ export const preferencesSchema = z
     maxDistanceKm: z.number().int().min(1).max(LIMITS.maxDistanceKm),
     intentions: z.array(z.enum(INTENTION_IDS)),
     incognito: z.boolean(),
+    onlyAdult: z.boolean(),
   })
   .partial()
   .strict();

@@ -84,7 +84,14 @@ describe('perfil', () => {
     const { agent } = await t.user();
     await agent.put('/api/me/preferences').send({ ageMin: 40, ageMax: 30 }).expect(400);
     const res = await agent.put('/api/me/preferences').send({ ageMin: 25, ageMax: 35, maxDistanceKm: 10 }).expect(200);
-    assert.deepEqual(res.body.preferences, { ageMin: 25, ageMax: 35, maxDistanceKm: 10, intentions: [], incognito: false });
+    assert.deepEqual(res.body.preferences, {
+      ageMin: 25,
+      ageMax: 35,
+      maxDistanceKm: 10,
+      intentions: [],
+      incognito: false,
+      onlyAdult: false,
+    });
   });
 
   it('nunca expone email, fecha de nacimiento ni coordenadas a otras personas', async () => {

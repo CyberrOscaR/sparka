@@ -3,6 +3,7 @@
 // - 'multi': varias opciones; se compara cuántas compartís.
 // - 'sim': similitud a medida para preguntas que no son una escala simple.
 // - sensitive: nunca se muestra (ni en el perfil ni en los motivos), solo cuenta para el porcentaje.
+// - adult: pregunta íntima del Modo +18; solo cuenta si las DOS personas tienen el Modo +18 activado.
 
 const NO_DECIR = { id: 'nodecir', label: 'Prefiero no decirlo' };
 
@@ -258,6 +259,129 @@ export const AUTOCITA_QUESTIONS = [
     ],
     reason: () => 'Gestionáis el dinero parecido',
   },
+
+  // ---------- Lo íntimo (Modo +18) ----------
+  {
+    id: 'libido',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: '¿Con qué frecuencia te apetece?',
+    type: 'scale',
+    options: [
+      { id: 'baja', label: 'De vez en cuando' },
+      { id: 'media', label: 'Una o dos veces por semana' },
+      { id: 'alta', label: 'Casi a diario' },
+      { id: 'muy_alta', label: 'Nunca es suficiente 🔥' },
+    ],
+    extra: [NO_DECIR],
+  },
+  {
+    id: 'iniciativa',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: 'En lo íntimo, la iniciativa…',
+    type: 'choice',
+    options: [
+      { id: 'tomo', label: 'La tomo yo' },
+      { id: 'ambos', label: 'A medias' },
+      { id: 'recibo', label: 'Me gusta que me busquen' },
+    ],
+    extra: [NO_DECIR],
+    // Complementario: quien la toma encaja con quien prefiere que la busquen.
+    sim: (a, b) => {
+      if (a === 'ambos' || b === 'ambos') return a === b ? 1 : 0.8;
+      if (a !== b) return 1;
+      return a === 'tomo' ? 0.6 : 0.3;
+    },
+  },
+  {
+    id: 'rol',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: 'Dominación y sumisión',
+    type: 'choice',
+    options: [
+      { id: 'domino', label: 'Me gusta dominar' },
+      { id: 'switch', label: 'Switch: según el día' },
+      { id: 'sumiso', label: 'Me gusta que me dominen' },
+      { id: 'vainilla', label: 'Eso no va conmigo' },
+    ],
+    extra: [NO_DECIR],
+    // También complementario: dominante + sumiso/a encaja; dos dominantes, no tanto.
+    sim: (a, b) => {
+      const pair = [a, b].sort().join('+');
+      const table = {
+        'domino+sumiso': 1,
+        'switch+switch': 1,
+        'vainilla+vainilla': 1,
+        'domino+switch': 0.8,
+        'sumiso+switch': 0.8,
+        'switch+vainilla': 0.4,
+        'domino+domino': 0.3,
+        'sumiso+sumiso': 0.3,
+        'domino+vainilla': 0.1,
+        'sumiso+vainilla': 0.1,
+      };
+      return table[pair] ?? 0.5;
+    },
+  },
+  {
+    id: 'explorar',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: 'Probar cosas nuevas',
+    type: 'scale',
+    options: [
+      { id: 'clasico', label: 'Lo clásico me encanta' },
+      { id: 'abierto', label: 'Abierto/a a probar' },
+      { id: 'aventurero', label: 'Me encanta explorar' },
+    ],
+    extra: [NO_DECIR],
+  },
+  {
+    id: 'primera_cita',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: '¿Sexo en la primera cita?',
+    type: 'scale',
+    options: [
+      { id: 'si', label: 'Si hay química, ¿por qué no?' },
+      { id: 'depende', label: 'Depende' },
+      { id: 'esperar', label: 'Prefiero esperar' },
+    ],
+    extra: [NO_DECIR],
+  },
+  {
+    id: 'hablar_sexo',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: 'Hablar de sexo…',
+    type: 'scale',
+    options: [
+      { id: 'cuesta', label: 'Me cuesta' },
+      { id: 'confianza', label: 'Con confianza, sí' },
+      { id: 'sin_tabues', label: 'Sin tabúes' },
+    ],
+  },
+  {
+    id: 'proteccion',
+    group: 'intimo',
+    adult: true,
+    sensitive: true,
+    text: 'Protección',
+    type: 'choice',
+    options: [
+      { id: 'siempre', label: 'Siempre, sin excepciones' },
+      { id: 'hablado', label: 'Se habla antes (pruebas incluidas)' },
+    ],
+    sim: (a, b) => (a === b ? 1 : 0.5),
+  },
 ];
 
 export const IMPORTANCE = {
@@ -275,13 +399,14 @@ export function allOptions(q) {
 
 /** Lo que se envía al navegador: sin funciones internas. */
 export function publicQuestions() {
-  return AUTOCITA_QUESTIONS.map(({ id, group, text, type, max, sensitive, options, extra }) => ({
+  return AUTOCITA_QUESTIONS.map(({ id, group, text, type, max, sensitive, adult, options, extra }) => ({
     id,
     group,
     text,
     type,
     max,
     sensitive: Boolean(sensitive),
+    adult: Boolean(adult),
     options: [...options, ...(extra ?? [])],
   }));
 }

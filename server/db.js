@@ -161,6 +161,11 @@ const COLUMNS = [
   ['matches', 'coincide_started_at', 'INTEGER'],
   ['matches', 'coincide_a', 'TEXT'], // huecos secretos de user_a (JSON)
   ['matches', 'coincide_b', 'TEXT'],
+  // Modo +18 (opcional, con consentimiento expreso)
+  ['profiles', 'adult_mode', 'INTEGER NOT NULL DEFAULT 0'],
+  ['profiles', 'adult_consent_at', 'INTEGER'],
+  ['profiles', 'adult_profile', "TEXT NOT NULL DEFAULT '{}'"], // orientación, qué busca, preguntas picantes
+  ['profiles', 'only_adult', 'INTEGER NOT NULL DEFAULT 0'], // filtro: ver solo perfiles +18
 ];
 
 function migrate(db) {

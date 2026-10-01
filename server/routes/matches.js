@@ -78,6 +78,7 @@ export function matchRoutes(ctx) {
       createdAt: match.created_at,
       source: match.source,
       user: publicProfileFor(db, match.otherId, req.me),
+      adultPair: req.me.adultMode && getProfile(db, match.otherId).adultMode,
       ...pulse.stateFor(match, req.userId),
       ...coincide.stateFor(match, req.userId),
     });
@@ -130,17 +131,28 @@ export function matchRoutes(ctx) {
     const match = loadMatch(req);
     if (match.closed_at) throw new HttpError(409, 'Esta conversación está cerrada.');
     const { body, confirmed } = parse(messageSchema, req.body);
+    const other = getProfile(db, match.otherId);
+    // Sin censura entre adultos que lo han elegido; con consentimiento para quien no.
+    const adultPair = req.me.adultMode && other.adultMode;
     const risk = analyzeMessage(body);
-    if (risk.offensive && !confirmed) {
+    const offensive = adultPair ? risk.insult : risk.offensive;
+    const unsolicitedSexual = risk.sexual && !adultPair;
+    if (offensive && !confirmed) {
       // Como en la vida real: una pausa antes de decir algo hiriente.
       throw new HttpError(422, '¿Seguro que quieres enviar esto? Podría resultar ofensivo.', {
         code: 'confirm_offensive',
       });
     }
-    const flag = risk.scamRisk ? 'scam' : risk.offensive ? 'offensive' : null;
+    if (unsolicitedSexual && !confirmed) {
+      throw new HttpError(
+        422,
+        `${other.name} no tiene activado el Modo +18. Si lo envías, le llegará oculto y decidirá si quiere verlo.`,
+        { code: 'confirm_sexual' },
+      );
+    }
+    const flag = risk.scamRisk ? 'scam' : unsolicitedSexual ? 'sexual' : offensive ? 'offensive' : null;
     const message = postMessage(ctx, match.id, req.userId, body, { flag });
 
-    const other = getProfile(db, match.otherId);
     if (other.isDemo && demo) {
       demo.scheduleReply(match.id, other.userId, req.userId, (matchId, senderId, text) =>
         postMessage(ctx, matchId, senderId, text),

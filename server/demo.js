@@ -170,6 +170,61 @@ const FIRST_REPLIES = [
   '¡Hola, hola! Me preguntaba si escribirías tú primero 😄',
 ];
 
+// Respuestas cuando las dos personas tienen el Modo +18.
+const FLIRTY_REPLIES = [
+  'Mmm, me gusta por dónde vas 😏',
+  'Cuéntame más… pero despacito 🔥',
+  '¿Y si lo comprobamos en persona? 😉',
+  'Me estás poniendo difícil concentrarme 🙈',
+  'Tengo una idea para la primera cita… pero te la cuento en persona 😏',
+  'Me encanta que hablemos claro. ¿Qué es lo que más te apetece?',
+];
+
+const ADULT_ANSWERS = {
+  me_pone: ['Que me miren a los ojos cuando hablamos.', 'La seguridad sin prepotencia.', 'Los besos en el cuello. Y la gente que sabe lo que quiere.', 'Una conversación con doble sentido bien llevada.', 'Que me susurren al oído en un sitio lleno de gente.'],
+  en_la_cama: ['Generoso/a y sin prisas.', 'Juguetón/a: también ahí me encanta reírme.', 'Muy atento/a a lo que te gusta.', 'Intenso/a, para qué negarlo.', 'De quien pregunta y escucha.'],
+  fantasia: ['Una escapada improvisada a un hotel con vistas.', 'Un tren nocturno con compartimento privado.', 'Una cita a ciegas de verdad, con antifaz incluido.', 'Una noche entera sin móviles y sin reloj.', 'La playa al amanecer, sin nadie alrededor.'],
+  quiero_probar: ['Un curso de masajes… para practicar en casa.', 'Algún juguete nuevo, sin vergüenza.', 'Un poco de juego de roles.', 'Atarnos, con cariño y palabra de seguridad.', 'Una clase de tantra, por curiosidad.'],
+  me_seducen: ['Con humor y un poco de descaro.', 'Con una buena playlist y una copa de vino.', 'Cocinándome algo… y lo que venga después.', 'Con mensajes que suben de tono poco a poco.', 'Con confianza y respeto. Lo demás llega solo.'],
+  limite: ['Sin consentimiento claro, nada.', 'Nada de presiones ni de prisas.', 'Siempre con protección.', 'El respeto no se negocia.', 'Si digo para, se para.'],
+};
+
+function orientationFor(gender, showMe) {
+  if (showMe.length > 1) return gender === 'no_binario' ? 'queer' : 'bi';
+  if (gender === 'no_binario') return 'queer';
+  if (showMe[0] === gender) return gender === 'mujer' ? 'lesbiana' : 'gay';
+  return 'hetero';
+}
+
+/** El 40 % de los perfiles demo tiene el Modo +18, con su lado picante y sus respuestas íntimas. */
+export function ensureDemoAdultProfiles(db, now = Date.now()) {
+  if (db.prepare('SELECT 1 FROM profiles WHERE is_demo = 1 AND adult_mode = 1 LIMIT 1').get()) return;
+  const rand = mulberry32(18);
+  const adultQuestions = AUTOCITA_QUESTIONS.filter((q) => q.adult);
+  const lookingFor = ['casual', 'una_noche', 'fwb', 'quimica', 'explorar', 'abierta', 'trios', 'sexting'];
+  const update = db.prepare('UPDATE profiles SET adult_mode = 1, adult_consent_at = ?, adult_profile = ? WHERE user_id = ?');
+  const answersOf = db.prepare('SELECT answers FROM autocita_profiles WHERE user_id = ?');
+  const saveAnswers = db.prepare('UPDATE autocita_profiles SET answers = ? WHERE user_id = ?');
+  transaction(db, () => {
+    for (const p of db.prepare('SELECT user_id, gender, show_me FROM profiles WHERE is_demo = 1').all()) {
+      if (p.user_id % 5 >= 2) continue;
+      const prompts = pickMany(rand, Object.keys(ADULT_ANSWERS), 2).map((id) => ({ id, answer: pick(rand, ADULT_ANSWERS[id]) }));
+      const profile = {
+        orientation: orientationFor(p.gender, JSON.parse(p.show_me)),
+        lookingFor: pickMany(rand, lookingFor, 2 + Math.floor(rand() * 2)),
+        prompts,
+      };
+      update.run(now, JSON.stringify(profile), p.user_id);
+      const row = answersOf.get(p.user_id);
+      if (row) {
+        const answers = JSON.parse(row.answers);
+        for (const q of adultQuestions) answers[q.id] = { value: pick(rand, q.options).id, importance: 'importa' };
+        saveAnswers.run(JSON.stringify(answers), p.user_id);
+      }
+    }
+  });
+}
+
 const REPLIES = [
   'Jajaja me encanta. ¿Y tú qué tal la semana?',
   'Buena pregunta… déjame pensarlo 🤔 ¿Tú qué dirías?',
@@ -286,6 +341,10 @@ export function createDemo(
   function replyText(matchId, demoId, userId) {
     const sent = db.prepare('SELECT COUNT(*) AS n FROM messages WHERE match_id = ? AND sender_id = ?').get(matchId, demoId).n;
     if (sent === 0) return pick(random, FIRST_REPLIES);
+    // Entre dos personas con el Modo +18, el perfil demo coquetea sin rodeos.
+    if (getProfile(db, demoId).adultMode && getProfile(db, userId).adultMode && random() < 0.7) {
+      return pick(random, FLIRTY_REPLIES);
+    }
     if (sent === 1) {
       const demo = getProfile(db, demoId);
       const me = getProfile(db, userId);

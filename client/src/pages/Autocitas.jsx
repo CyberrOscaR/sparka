@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Lock, MapPin } from 'lucide-react';
 import { api } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
 import { useRealtime, useSocketEvent } from '../lib/realtime.jsx';
 import { useToast } from '../lib/toast.jsx';
 import { ProfileDetails } from '../components/ProfileDetails.jsx';
@@ -127,6 +128,8 @@ function ProposalCard({ p, onRespond, onProfile }) {
 }
 
 export function Autocitas() {
+  const { me } = useAuth();
+  const adultMode = me.adult.enabled;
   const { refreshCounts } = useRealtime();
   const toast = useToast();
   const [state, setState] = useState(null);
@@ -167,8 +170,18 @@ export function Autocitas() {
         note: 'Política, religión y otros temas personales son privados: nunca se muestran a nadie, solo cuentan para la afinidad. Siempre puedes elegir «Prefiero no decirlo».',
         questions: state.questions.filter((q) => q.group === 'valores'),
       },
+      ...(adultMode
+        ? [
+            {
+              id: 'intimo',
+              title: '🌶️ Lo íntimo (+18)',
+              note: 'Solo cuenta con personas que también tienen el Modo +18, y nunca se muestra: como mucho verás «Tenéis química en lo íntimo».',
+              questions: state.questions.filter((q) => q.group === 'intimo'),
+            },
+          ]
+        : []),
     ];
-  }, [state]);
+  }, [state, adultMode]);
 
   function setAnswer(id, answer) {
     setAnswers((a) => {
@@ -217,8 +230,9 @@ export function Autocitas() {
   }
 
   if (!state) return <Spinner />;
-  const answered = Object.keys(answers).length;
-  const total = state.questions.length;
+  const visible = state.questions.filter((q) => adultMode || !q.adult);
+  const answered = visible.filter((q) => answers[q.id]).length;
+  const total = visible.length;
   const enough = answered >= state.minAnswers;
 
   return (
@@ -291,6 +305,12 @@ export function Autocitas() {
           ))}
         </section>
       ))}
+
+      {!adultMode && (
+        <p className="ac-note">
+          🌶️ ¿Quieres que la afinidad tenga en cuenta también lo íntimo? Activa el Modo +18 en Perfil → Ajustes.
+        </p>
+      )}
 
       <div className="sticky-save">
         <button

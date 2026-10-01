@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import multer from 'multer';
+import { ADULT_LIMITS, ADULT_LOOKING_FOR, ADULT_PROMPTS, ORIENTATIONS } from './adultCatalog.js';
 import { requireAuth } from './auth.js';
 import { createAutocitas } from './autocitas.js';
 import { createBlind } from './blind.js';
@@ -12,7 +13,13 @@ import { createCoincide } from './coincide.js';
 import { CITIES, GENDERS, INTENTIONS, INTERESTS, LIMITS, PROMPTS, REPORT_REASONS } from './catalog.js';
 import { config as defaultConfig } from './config.js';
 import { openDb } from './db.js';
-import { createDemo, ensureDemoAutocitaProfiles, hasDemoProfiles, seedDemoProfiles } from './demo.js';
+import {
+  createDemo,
+  ensureDemoAdultProfiles,
+  ensureDemoAutocitaProfiles,
+  hasDemoProfiles,
+  seedDemoProfiles,
+} from './demo.js';
 import { createPulse } from './pulse.js';
 import { attachRealtime } from './realtime.js';
 import { authRoutes } from './routes/auth.js';
@@ -29,7 +36,10 @@ export function createApp(overrides = {}) {
   const db = overrides.db ?? openDb(cfg.dbFile);
   fs.mkdirSync(cfg.uploadDir, { recursive: true });
   if (cfg.demoMode && !hasDemoProfiles(db)) seedDemoProfiles(db);
-  if (cfg.demoMode) ensureDemoAutocitaProfiles(db);
+  if (cfg.demoMode) {
+    ensureDemoAutocitaProfiles(db);
+    ensureDemoAdultProfiles(db);
+  }
 
   const app = express();
   if (cfg.trustProxy) app.set('trust proxy', 1);
@@ -81,6 +91,7 @@ export function createApp(overrides = {}) {
       cities: CITIES.map(({ id, label, country }) => ({ id, label, country })),
       reportReasons: REPORT_REASONS,
       limits: LIMITS,
+      adult: { orientations: ORIENTATIONS, lookingFor: ADULT_LOOKING_FOR, prompts: ADULT_PROMPTS, limits: ADULT_LIMITS },
       demoMode: cfg.demoMode,
     });
   });

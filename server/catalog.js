@@ -140,6 +140,7 @@ export const REPORT_REASONS = [
   { id: 'contenido', label: 'Fotos o contenido inapropiado' },
   { id: 'menor', label: 'Parece menor de edad' },
   { id: 'estafa', label: 'Estafa o petición de dinero' },
+  { id: 'sexual_no_deseado', label: 'Contenido sexual que no quería' },
   { id: 'otro', label: 'Otro motivo' },
 ];
 

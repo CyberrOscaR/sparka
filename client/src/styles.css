@@ -580,3 +580,19 @@ kbd { padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); bac
   .nav-badge { right: 10%; }
   .nav-dot { right: 22%; }
 }
+
+/* ---------- Modo +18 ---------- */
+.adult-card { display: grid; gap: 12px; }
+.adult-card.on { border: 2px solid #e8364f; }
+.adult-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.adult-head h2 { margin: 0; }
+.adult-conditions { display: grid; gap: 10px; font-size: 0.92rem; }
+.adult-conditions label { display: flex; gap: 10px; align-items: flex-start; }
+.adult-conditions input { margin-top: 3px; accent-color: #e8364f; }
+.adult-block { display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: rgba(232, 54, 79, 0.08); border: 1px solid rgba(232, 54, 79, 0.3); }
+.adult-block .section-title { margin: 0; color: #e8364f; }
+.adult-orientation { margin: 0; font-weight: 700; }
+.adult-chip { border-color: rgba(232, 54, 79, 0.5); }
+.adult-prompt { border-color: rgba(232, 54, 79, 0.35); }
+.badge-adult { background: #e8364f; color: #fff; }
+.hidden-bubble { border: 2px dashed #e8364f !important; background: rgba(232, 54, 79, 0.08) !important; color: var(--text); text-align: left; font: inherit; }

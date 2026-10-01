@@ -8,7 +8,7 @@ import { LIMITS, cityById } from '../catalog.js';
 import { transaction } from '../db.js';
 import { isProfileComplete, nearestCity, publicProfile } from '../matching.js';
 import { getPhotoUrls, getProfile, likesReceivedCount, unreadCount } from '../store.js';
-import { HttpError, idParam, parse, preferencesSchema, profileUpdateSchema } from '../validation.js';
+import { HttpError, adultSchema, idParam, parse, preferencesSchema, profileUpdateSchema } from '../validation.js';
 
 const MIME_EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 
@@ -72,9 +72,16 @@ function buildPrivateMe(db, userId, blind, autocitas) {
       maxDistanceKm: p.maxDistanceKm,
       intentions: p.filterIntentions,
       incognito: p.incognito,
+      onlyAdult: p.onlyAdult,
+    },
+    adult: {
+      enabled: p.adultMode,
+      orientation: p.adultProfile.orientation ?? null,
+      lookingFor: p.adultProfile.lookingFor ?? [],
+      prompts: p.adultProfile.prompts ?? [],
     },
     photos,
-    preview: publicProfile(p, photos.map((ph) => ph.url), null),
+    preview: publicProfile(p, photos.map((ph) => ph.url), null, Date.now(), { includeAdult: true }),
     counts: counts(db, userId, blind, autocitas),
     superlikesLeft: superlikesLeft(db, userId),
   };
@@ -143,16 +150,43 @@ export function meRoutes({ db, cfg, notify, demo, blind, autocitas }) {
     const ageMax = data.ageMax ?? current.ageMax;
     if (ageMin > ageMax) throw new HttpError(400, 'La edad mínima no puede ser mayor que la máxima.');
     db.prepare(
-      `UPDATE profiles SET age_min = ?, age_max = ?, max_distance_km = ?, filter_intentions = ?, incognito = ?
-       WHERE user_id = ?`,
+      `UPDATE profiles SET age_min = ?, age_max = ?, max_distance_km = ?, filter_intentions = ?, incognito = ?,
+       only_adult = ? WHERE user_id = ?`,
     ).run(
       ageMin,
       ageMax,
       data.maxDistanceKm ?? current.maxDistanceKm,
       JSON.stringify(data.intentions ?? current.filterIntentions),
       (data.incognito ?? current.incognito) ? 1 : 0,
+      (data.onlyAdult ?? current.onlyAdult) && current.adultMode ? 1 : 0,
       req.userId,
     );
+    res.json(privateMe(db, req.userId));
+  });
+
+  /**
+   * Modo +18: activarlo exige consentimiento expreso. Tu lado picante solo lo ven personas
+   * que también lo tienen activado, y el contenido sexual del chat solo fluye libre entre ellas.
+   */
+  router.put('/me/adult', (req, res) => {
+    const data = parse(adultSchema, req.body);
+    const current = getProfile(db, req.userId);
+    if (current.age < 18) throw new HttpError(403, 'El Modo +18 es solo para mayores de edad.');
+    const enabling = data.enabled === true && !current.adultMode;
+    if (enabling && data.consent !== true) {
+      throw new HttpError(400, 'Para activar el Modo +18 tienes que aceptar las condiciones.');
+    }
+    const adultProfile = {
+      ...current.adultProfile,
+      ...(data.orientation !== undefined && { orientation: data.orientation }),
+      ...(data.lookingFor !== undefined && { lookingFor: data.lookingFor }),
+      ...(data.prompts !== undefined && { prompts: data.prompts }),
+    };
+    const enabled = data.enabled ?? current.adultMode;
+    db.prepare(
+      `UPDATE profiles SET adult_mode = ?, adult_profile = ?, only_adult = CASE WHEN ? THEN only_adult ELSE 0 END,
+       adult_consent_at = COALESCE(?, adult_consent_at) WHERE user_id = ?`,
+    ).run(enabled ? 1 : 0, JSON.stringify(adultProfile), enabled ? 1 : 0, enabling ? Date.now() : null, req.userId);
     res.json(privateMe(db, req.userId));
   });
 

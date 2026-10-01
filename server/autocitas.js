@@ -50,7 +50,10 @@ export function deepScore(answersA, answersB, profileA, profileB) {
   let common = 0;
   let dealbreak = false;
   const sims = {};
+  // Las preguntas íntimas solo cuentan entre dos personas con el Modo +18.
+  const adultPair = Boolean(profileA?.adultMode && profileB?.adultMode);
   for (const q of AUTOCITA_QUESTIONS) {
+    if (q.adult && !adultPair) continue;
     const a = answersA[q.id];
     const b = answersB[q.id];
     if (!a || !b) continue;
@@ -100,10 +103,12 @@ export function reasonsFor(answersA, answersB, sims) {
     .slice(0, 3)
     .map((r) => r.text);
 
-  const sensitive = AUTOCITA_QUESTIONS.filter((q) => q.sensitive && sims[q.id] != null).map((q) => sims[q.id]);
-  if (sensitive.length >= 2 && sensitive.reduce((s, x) => s + x, 0) / sensitive.length >= 0.75) {
-    reasons.push('Vuestros valores encajan');
-  }
+  const average = (list) => list.reduce((s, x) => s + x, 0) / list.length;
+  const values = AUTOCITA_QUESTIONS.filter((q) => q.sensitive && !q.adult && sims[q.id] != null).map((q) => sims[q.id]);
+  if (values.length >= 2 && average(values) >= 0.75) reasons.push('Vuestros valores encajan');
+  // Solo aparece si las dos personas tienen el Modo +18 (si no, esas preguntas ni se comparan).
+  const intimate = AUTOCITA_QUESTIONS.filter((q) => q.adult && sims[q.id] != null).map((q) => sims[q.id]);
+  if (intimate.length >= 3 && average(intimate) >= 0.75) reasons.push('Tenéis química en lo íntimo 🔥');
   return reasons;
 }
 
@@ -115,7 +120,17 @@ const FINDE_PLANS = {
   viaje: 'un paseo por un pueblo bonito cerca de vuestra ciudad',
 };
 
+const CASUAL = ['casual', 'una_noche', 'fwb'];
+
 function planFor(answersA, answersB, profileA, profileB) {
+  // Dos personas +18 que buscan algo casual: plan a la altura.
+  if (profileA.adultMode && profileB.adultMode) {
+    const a = profileA.adultProfile.lookingFor ?? [];
+    const b = profileB.adultProfile.lookingFor ?? [];
+    if (CASUAL.some((x) => a.includes(x) && b.includes(x))) {
+      return { idea: 'unas copas en un sitio con buena música… y a ver adónde os lleva la noche 😏', because: 'buscáis lo mismo' };
+    }
+  }
   const finde = autocitaQuestionById.get('finde');
   const shared = (answersA.finde?.value ?? []).filter((x) => (answersB.finde?.value ?? []).includes(x));
   if (shared.length) {

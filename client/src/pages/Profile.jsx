@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useToast } from '../lib/toast.jsx';
+import { AdultSection } from '../components/Adult.jsx';
 import { FiltersForm } from '../components/Filters.jsx';
 import { ProfileDetails } from '../components/ProfileDetails.jsx';
 import {
@@ -131,6 +132,8 @@ function Settings() {
 
   return (
     <div className="settings-list">
+      <AdultSection />
+
       <section className="card">
         <h2>Preferencias de descubrimiento</h2>
         <FiltersForm submitLabel="Guardar preferencias" onSaved={() => toast('Preferencias guardadas', { type: 'success' })} />

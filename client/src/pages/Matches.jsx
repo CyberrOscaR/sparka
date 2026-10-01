@@ -107,7 +107,9 @@ export function Matches() {
                               ? '¿Te apetece seguir? Responde al Pulso'
                               : m.coincidePending
                                 ? 'Te proponen quedar: marca tus huecos en secreto'
-                              : `${mine && m.lastMessage.kind === 'text' ? 'Tú: ' : ''}${m.lastMessage.body.split('\n').at(-1)}`}
+                              : !mine && m.lastMessage.flag === 'sexual'
+                                ? '🌶️ Mensaje oculto (contenido sexual)'
+                                : `${mine && m.lastMessage.kind === 'text' ? 'Tú: ' : ''}${m.lastMessage.body.split('\n').at(-1)}`}
                         </p>
                       </div>
                       {m.unread > 0 && <span className="unread-dot" aria-label={`${m.unread} sin leer`} />}

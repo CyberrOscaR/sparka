@@ -41,6 +41,7 @@ export function discoverFor(db, me, { limit = 20, now = Date.now(), random = Mat
     .map(parseProfile)
     .filter((p) => mutuallyEligible(me, p))
     .filter((p) => filterIntentions.length === 0 || filterIntentions.includes(p.intention))
+    .filter((p) => !me.onlyAdult || p.adultMode)
     .map((p) => ({ p, d: distanceKm(me.lat, me.lng, p.lat, p.lng) }))
     .filter(({ d }) => d <= me.maxDistanceKm)
     // Un poco de azar para que el orden no sea siempre idéntico.
