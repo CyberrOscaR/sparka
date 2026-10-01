@@ -23,11 +23,13 @@ export function Matches() {
   useSocketEvent('match:new', load);
   useSocketEvent('match:removed', load);
   useSocketEvent('message:new', load);
+  useSocketEvent('pulse:changed', load);
 
   if (!matches) return <Spinner />;
 
   const fresh = matches.filter((m) => !m.lastMessage);
-  const convos = matches.filter((m) => m.lastMessage);
+  // Las conversaciones cerradas con el Pulso van al final.
+  const convos = matches.filter((m) => m.lastMessage).sort((a, b) => a.closed - b.closed);
 
   return (
     <>
@@ -72,18 +74,31 @@ export function Matches() {
                 {convos.map((m) => {
                   const mine = m.lastMessage.senderId === me.id;
                   return (
-                    <Link key={m.id} to={`/chat/${m.id}`} className={`convo ${m.unread ? 'unread' : ''}`}>
+                    <Link
+                      key={m.id}
+                      to={`/chat/${m.id}`}
+                      className={`convo ${m.unread ? 'unread' : ''} ${m.closed ? 'closed' : ''}`}
+                    >
                       <Avatar user={m.user} size={56} />
                       <div className="convo-body">
                         <div className="convo-top">
                           <strong>
                             {m.user.name} {m.user.isDemo && <DemoBadge />}
+                            {m.source === 'blind' && (
+                              <span className="badge" title="Match a ciegas">
+                                🙈
+                              </span>
+                            )}
+                            {m.pulsePending && <span className="badge badge-brand">💓 Pulso</span>}
                           </strong>
                           <time>{shortTime(m.lastMessage.createdAt)}</time>
                         </div>
                         <p className="convo-preview">
-                          {mine && 'Tú: '}
-                          {m.lastMessage.body}
+                          {m.closed
+                            ? 'Conversación cerrada 💐'
+                            : m.pulsePending
+                              ? '¿Te apetece seguir? Responde al Pulso'
+                              : `${mine && m.lastMessage.kind === 'text' ? 'Tú: ' : ''}${m.lastMessage.body.split('\n').at(-1)}`}
                         </p>
                       </div>
                       {m.unread > 0 && <span className="unread-dot" aria-label={`${m.unread} sin leer`} />}

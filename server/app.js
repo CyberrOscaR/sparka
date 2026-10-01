@@ -6,12 +6,15 @@ import express from 'express';
 import helmet from 'helmet';
 import multer from 'multer';
 import { requireAuth } from './auth.js';
+import { createBlind } from './blind.js';
 import { CITIES, GENDERS, INTENTIONS, INTERESTS, LIMITS, PROMPTS, REPORT_REASONS } from './catalog.js';
 import { config as defaultConfig } from './config.js';
 import { openDb } from './db.js';
 import { createDemo, hasDemoProfiles, seedDemoProfiles } from './demo.js';
+import { createPulse } from './pulse.js';
 import { attachRealtime } from './realtime.js';
 import { authRoutes } from './routes/auth.js';
+import { blindRoutes } from './routes/blind.js';
 import { discoverRoutes } from './routes/discover.js';
 import { matchRoutes } from './routes/matches.js';
 import { meRoutes } from './routes/me.js';
@@ -44,8 +47,22 @@ export function createApp(overrides = {}) {
 
   const server = http.createServer(app);
   const { io, notify } = attachRealtime(server, db);
-  const demo = cfg.demoMode ? createDemo({ db, notify, replyDelayMs: cfg.demoReplyDelayMs, random: cfg.demoRandom }) : null;
-  const ctx = { db, cfg, notify, demo };
+  // Los servicios se referencian entre sí a través de ctx (el demo usa blind y pulse, y viceversa).
+  const ctx = { db, cfg, notify };
+  ctx.blind = createBlind(ctx);
+  ctx.pulse = createPulse(ctx);
+  ctx.demo = cfg.demoMode
+    ? createDemo(ctx, {
+        replyDelayMs: cfg.demoReplyDelayMs,
+        random: cfg.demoRandom,
+        blindLikeDelaysMs: cfg.demoBlindLikeDelaysMs,
+      })
+    : null;
+  const { demo } = ctx;
+
+  // Revisa Pulsos caducados y conversaciones en silencio cada 5 minutos.
+  const sweepTimer = setInterval(() => ctx.pulse.sweep(), 5 * 60 * 1000);
+  sweepTimer.unref();
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));
   app.get('/api/meta', (req, res) => {
@@ -62,7 +79,15 @@ export function createApp(overrides = {}) {
     });
   });
   app.use('/api/auth', authRoutes(ctx));
-  app.use('/api', requireAuth(db), meRoutes(ctx), discoverRoutes(ctx), matchRoutes(ctx), safetyRoutes(ctx));
+  app.use(
+    '/api',
+    requireAuth(db),
+    meRoutes(ctx),
+    discoverRoutes(ctx),
+    blindRoutes(ctx),
+    matchRoutes(ctx),
+    safetyRoutes(ctx),
+  );
   app.use('/api', (req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
 
   // fallthrough: false → una foto que no existe da 404 (y no la página de la web).
@@ -90,11 +115,12 @@ export function createApp(overrides = {}) {
   });
 
   function close() {
+    clearInterval(sweepTimer);
     demo?.stop();
     io.close();
     server.close();
     db.close();
   }
 
-  return { app, server, io, db, close };
+  return { app, server, io, db, ctx, close };
 }

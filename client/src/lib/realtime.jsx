@@ -23,6 +23,8 @@ export function RealtimeProvider({ children }) {
     s.on('match:new', refresh);
     s.on('match:removed', refresh);
     s.on('message:new', refresh);
+    s.on('blind:liked', refresh);
+    s.on('pulse:changed', refresh);
     return () => {
       s.close();
       setSocket(null);

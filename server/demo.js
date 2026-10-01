@@ -1,5 +1,6 @@
 // Modo demo: perfiles de ejemplo, siempre marcados como "Demo" en la interfaz,
 // para que la app no esté vacía al probarla. Desactívalo en producción (DEMO_MODE=false).
+import { questionForDay } from './blind.js';
 import { CITIES, INTERESTS, PROMPTS, interestById, promptById } from './catalog.js';
 import { transaction } from './db.js';
 import { distanceKm, mutuallyEligible, parseProfile } from './matching.js';
@@ -179,8 +180,23 @@ const REPLIES = [
   'Totalmente. ¿Qué es lo que más te gusta hacer un finde?',
 ];
 
-export function createDemo({ db, notify, replyDelayMs = [1200, 3500], random = Math.random }) {
+function seedFrom(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/**
+ * Comportamiento de los perfiles demo. `ctx` da acceso a db, notify, blind y pulse.
+ * Los retrasos son configurables para que los tests no tengan que esperar.
+ */
+export function createDemo(
+  ctx,
+  { replyDelayMs = [1200, 3500], random = Math.random, blindLikeDelaysMs = [6000, 20000, 45000] } = {},
+) {
+  const { db, notify } = ctx;
   const pendingTimers = new Set();
+  const answeredDays = new Set();
 
   function later(ms, fn) {
     const t = setTimeout(() => {
@@ -254,10 +270,10 @@ export function createDemo({ db, notify, replyDelayMs = [1200, 3500], random = M
   /** Simula que el perfil demo escribe y responde. */
   function scheduleReply(matchId, demoId, userId, deliver) {
     later(400, () => {
-      if (!getMatchFor(db, matchId, demoId)) return;
+      if (!getMatchFor(db, matchId, demoId) || getMatchFor(db, matchId, demoId).closed_at) return;
       notify(userId, 'typing', { matchId, userId: demoId });
       later(delay(), () => {
-        if (!getMatchFor(db, matchId, demoId)) return;
+        if (!getMatchFor(db, matchId, demoId) || getMatchFor(db, matchId, demoId).closed_at) return;
         const readAt = Date.now();
         db.prepare('UPDATE messages SET read_at = ? WHERE match_id = ? AND sender_id = ? AND read_at IS NULL').run(
           readAt,
@@ -270,10 +286,94 @@ export function createDemo({ db, notify, replyDelayMs = [1200, 3500], random = M
     });
   }
 
+  /** Los perfiles demo responden a la Pregunta del Día: por ciudad y género, cada cual una respuesta distinta. */
+  function ensureBlindAnswers(day) {
+    if (answeredDays.has(day)) return;
+    const done = db
+      .prepare('SELECT 1 FROM blind_answers a JOIN profiles p ON p.user_id = a.user_id WHERE a.day = ? AND p.is_demo = 1 LIMIT 1')
+      .get(day);
+    if (!done) {
+      const question = questionForDay(day);
+      const rand = mulberry32(seedFrom(day));
+      const groups = new Map();
+      for (const p of db.prepare('SELECT user_id, city, gender FROM profiles WHERE is_demo = 1 ORDER BY user_id').all()) {
+        const key = `${p.city}|${p.gender}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(p.user_id);
+      }
+      const now = Date.now();
+      const dayStart = Date.parse(`${day}T00:00:00Z`);
+      const insert = db.prepare(
+        'INSERT OR IGNORE INTO blind_answers (user_id, day, question_id, body, created_at) VALUES (?, ?, ?, ?, ?)',
+      );
+      transaction(db, () => {
+        for (const ids of groups.values()) {
+          const answers = pickMany(rand, question.demo, question.demo.length);
+          pickMany(rand, ids, answers.length).forEach((userId, i) => {
+            insert.run(userId, day, question.id, answers[i], Math.max(dayStart, now - Math.floor(rand() * 3 * 3600_000)));
+          });
+        }
+      });
+    }
+    answeredDays.add(day);
+  }
+
+  function demoLikesAnswerOf(demoId, userId, day) {
+    const mine = ctx.blind.myAnswer(userId, day);
+    const demo = getProfile(db, demoId);
+    if (!mine || !demo) return;
+    try {
+      ctx.blind.like(demo, mine.id);
+    } catch {
+      // Ya no es posible (bloqueo, match, cambio de día…): no pasa nada.
+    }
+  }
+
+  /** Al responder, a algunos perfiles demo les encanta tu respuesta… poco a poco, con suspense. */
+  function onBlindAnswered(userId, day) {
+    const me = getProfile(db, userId);
+    if (!me || me.isDemo) return;
+    const demos = ctx.blind.candidates(me, day).filter((c) => c.profile.isDemo);
+    pickMany(random, demos, blindLikeDelaysMs.length).forEach((c, i) =>
+      later(blindLikeDelaysMs[i], () => demoLikesAnswerOf(c.profile.userId, userId, day)),
+    );
+  }
+
+  /** Si das chispa a la respuesta de un perfil demo, quizá también le guste la tuya. */
+  function onBlindLiked(demoId, userId, day) {
+    if (random() >= 0.5) return;
+    later(delay(), () => demoLikesAnswerOf(demoId, userId, day));
+  }
+
+  /** Los perfiles demo también responden al Pulso (casi siempre que sí). */
+  function onPulseStarted(matchId) {
+    const m = db.prepare('SELECT user_a, user_b FROM matches WHERE id = ?').get(matchId);
+    for (const id of [m.user_a, m.user_b]) {
+      if (!getProfile(db, id)?.isDemo) continue;
+      const answer = random() < 0.8 ? 'yes' : 'no';
+      later(delay() * 2, () => {
+        try {
+          ctx.pulse.vote(matchId, id, answer);
+        } catch {
+          // El Pulso ya se resolvió o el match ya no existe.
+        }
+      });
+    }
+  }
+
   function stop() {
     for (const t of pendingTimers) clearTimeout(t);
     pendingTimers.clear();
   }
 
-  return { onProfileCompleted, maybeLikeBack, scheduleReply, stop };
+  return {
+    onProfileCompleted,
+    maybeLikeBack,
+    scheduleReply,
+    ensureBlindAnswers,
+    onBlindAnswered,
+    onBlindLiked,
+    onPulseStarted,
+    stop,
+  };
 }

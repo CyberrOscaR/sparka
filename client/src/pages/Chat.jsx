@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, EllipsisVertical, HeartCrack, Send, ShieldAlert, User } from 'lucide-react';
+import { Activity, ArrowLeft, Ban, EllipsisVertical, HeartCrack, Send, ShieldAlert, Trash2, User } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { clockTime, longDate } from '../lib/format.js';
@@ -12,6 +12,8 @@ import { ConfirmDialog, ReportDialog } from '../components/dialogs.jsx';
 import { Avatar, DemoBadge, Modal, Spinner } from '../components/ui.jsx';
 
 const GROUP_GAP = 5 * 60 * 1000;
+
+const HOUR = 3_600_000;
 
 function icebreakersFor(user, interestById) {
   const ideas = [];
@@ -40,7 +42,7 @@ export function Chat() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [dialog, setDialog] = useState(null); // 'profile' | 'unmatch' | 'report' | { offensive: body }
+  const [dialog, setDialog] = useState(null); // 'profile' | 'unmatch' | 'report' | 'pulse' | 'pulse-no' | { offensive }
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimer = useRef(null);
@@ -99,6 +101,10 @@ export function Chat() {
     if (matchId !== id) return;
     setMessages((list) => list.map((m) => (m.senderId === me.id && !m.readAt ? { ...m, readAt } : m)));
   });
+  useSocketEvent('pulse:changed', ({ matchId }) => {
+    if (matchId !== id) return;
+    api.get(`/api/matches/${id}`).then(setMatch, () => {});
+  });
   useSocketEvent('match:removed', ({ matchId }) => {
     if (matchId !== id) return;
     toast('Esta conversación ya no está disponible.');
@@ -123,6 +129,29 @@ export function Chat() {
     setMessages((list) => [...older, ...list]);
     setHasMore(more);
     requestAnimationFrame(() => (el.scrollTop = el.scrollHeight - prevHeight));
+  }
+
+  async function startPulse() {
+    try {
+      const state = await api.post(`/api/matches/${id}/pulse`);
+      setMatch((m) => ({ ...m, ...state }));
+      setDialog(null);
+      toast('💓 Pulso enviado. Os preguntamos en secreto a los dos.', { type: 'success' });
+    } catch (err) {
+      setDialog(null);
+      toast(err.message, { type: 'error' });
+    }
+  }
+
+  async function votePulse(answer) {
+    try {
+      const state = await api.post(`/api/matches/${id}/pulse/vote`, { answer });
+      setMatch((m) => ({ ...m, ...state }));
+      setDialog(null);
+      refreshCounts();
+    } catch (err) {
+      toast(err.message, { type: 'error' });
+    }
   }
 
   async function send(body, confirmed = false) {
@@ -187,6 +216,11 @@ export function Chat() {
             <button role="menuitem" onClick={() => setDialog('profile')}>
               <User size={18} /> Ver perfil
             </button>
+            {match.canStartPulse && (
+              <button role="menuitem" onClick={() => setDialog('pulse')}>
+                <Activity size={18} /> Tomar el Pulso 💓
+              </button>
+            )}
             <button role="menuitem" onClick={() => setDialog('unmatch')}>
               <HeartCrack size={18} /> Deshacer match
             </button>
@@ -212,8 +246,13 @@ export function Chat() {
         )}
         <div className="chat-intro">
           <Avatar user={other} size={84} />
-          <strong>Hicisteis match el {longDate(match.createdAt)}</strong>
-          {!messages.some((m) => m.senderId === me.id) && (
+          <strong>
+            {match.source === 'blind' ? '🙈 Match a ciegas' : 'Hicisteis match'} el {longDate(match.createdAt)}
+          </strong>
+          {match.source === 'blind' && (
+            <p>Os gustó lo que pensáis antes de veros. Estas fueron vuestras respuestas: ¡empezad por ahí!</p>
+          )}
+          {match.source !== 'blind' && !match.closed && !messages.some((m) => m.senderId === me.id && m.kind === 'text') && (
             <>
               <p>
                 {messages.length === 0
@@ -245,11 +284,29 @@ export function Chat() {
           const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
           const grouped = prev && prev.senderId === m.senderId && m.createdAt - prev.createdAt < GROUP_GAP && !newDay;
           const lastOfGroup = !next || next.senderId !== m.senderId || next.createdAt - m.createdAt >= GROUP_GAP;
+          if (m.kind === 'system') {
+            return (
+              <Fragment key={m.id}>
+                {newDay && <div className="day-sep">{longDate(m.createdAt)}</div>}
+                <div className="system-msg" role="note">
+                  {m.body}
+                </div>
+              </Fragment>
+            );
+          }
+          const [blindQuestion, ...blindAnswer] = m.kind === 'blind' ? m.body.split('\n') : [];
           return (
             <Fragment key={m.id}>
               {newDay && <div className="day-sep">{longDate(m.createdAt)}</div>}
               <div className={`bubble-row ${mine ? 'mine' : ''} ${grouped ? 'grouped' : ''}`}>
-                <div className="bubble">{m.body}</div>
+                {m.kind === 'blind' ? (
+                  <div className="bubble blind-bubble">
+                    <span className="blind-q">🙈 {blindQuestion}</span>
+                    {blindAnswer.join('\n')}
+                  </div>
+                ) : (
+                  <div className="bubble">{m.body}</div>
+                )}
                 {!mine && m.flag === 'scam' && (
                   <div className="flag-warning" role="note">
                     <ShieldAlert size={14} style={{ verticalAlign: '-2px' }} /> <strong>Cuidado:</strong> este mensaje
@@ -284,6 +341,42 @@ export function Chat() {
         )}
       </div>
 
+      {match.pulse && !match.closed && (
+        <div className="pulse-card" role="region" aria-label="Pulso">
+          {match.pulse.myVote ? (
+            <p>
+              <strong>💓 Has dicho que sí.</strong> Si {other.name} también quiere seguir, os lo diremos a los dos. Si
+              no responde, la conversación se cerrará sola en {Math.max(1, Math.round((match.pulse.expiresAt - Date.now()) / HOUR))} h.
+            </p>
+          ) : (
+            <>
+              <p>
+                <strong>💓 Pulso: ¿te apetece seguir hablando con {other.name}?</strong>
+                <br />
+                Es secreto: tu «sí» solo se revela si es mutuo. Un «no» cierra la conversación con un adiós amable, sin
+                ghosting.
+              </p>
+              <div className="pulse-actions">
+                <button className="btn btn-sm" onClick={() => setDialog('pulse-no')}>
+                  Prefiero cerrar
+                </button>
+                <button className="btn btn-primary btn-sm" onClick={() => votePulse('yes')}>
+                  ¡Sí, me apetece!
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {match.closed ? (
+        <div className="closed-bar">
+          <span>💐 Conversación cerrada{match.closed.reason === 'pulse_timeout' ? ' (el Pulso caducó)' : ''}</span>
+          <button className="btn btn-sm" onClick={() => setDialog('unmatch')}>
+            <Trash2 size={16} /> Eliminar
+          </button>
+        </div>
+      ) : (
       <form
         className="chat-input"
         onSubmit={(e) => {
@@ -310,6 +403,7 @@ export function Chat() {
           <Send size={20} />
         </button>
       </form>
+      )}
 
       {dialog === 'profile' && (
         <Modal title="" onClose={() => setDialog(null)}>
@@ -319,10 +413,33 @@ export function Chat() {
       {dialog === 'report' && (
         <ReportDialog user={other} onClose={() => setDialog(null)} onDone={() => navigate('/matches', { replace: true })} />
       )}
+      {dialog === 'pulse' && (
+        <ConfirmDialog
+          title="Tomar el Pulso 💓"
+          confirmLabel="Tomar el Pulso"
+          onClose={() => setDialog(null)}
+          onConfirm={startPulse}
+        >
+          Os preguntaremos en secreto a {other.name} y a ti si queréis seguir hablando. Un «sí» solo se revela si es
+          mutuo (y entonces os proponemos un plan). Un «no» cierra la conversación con una despedida amable. Si nadie
+          responde en 3 días, se cierra sola. Nadie se queda esperando.
+        </ConfirmDialog>
+      )}
+      {dialog === 'pulse-no' && (
+        <ConfirmDialog
+          title="¿Cerrar la conversación?"
+          confirmLabel="Cerrar con cariño"
+          danger
+          onClose={() => setDialog(null)}
+          onConfirm={() => votePulse('no')}
+        >
+          Enviaremos una despedida amable en tu nombre y ya no podréis escribiros. Mejor que desaparecer sin más 💐
+        </ConfirmDialog>
+      )}
       {dialog === 'unmatch' && (
         <ConfirmDialog
-          title={`¿Deshacer el match con ${other.name}?`}
-          confirmLabel="Deshacer match"
+          title={match.closed ? '¿Eliminar esta conversación?' : `¿Deshacer el match con ${other.name}?`}
+          confirmLabel={match.closed ? 'Eliminar' : 'Deshacer match'}
           danger
           onClose={() => setDialog(null)}
           onConfirm={async () => {

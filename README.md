@@ -1,8 +1,39 @@
 # ✨ Sparka
 
-**La app de citas gratuita de verdad.** Todas las funciones para todo el mundo: sin planes premium, sin “boosts” y sin trucos para que pagues.
+**Enamórate de cómo piensa alguien.** Sparka es la app de citas donde importa lo que piensas, no solo tu foto, y donde nadie desaparece sin decir adiós. Y todas las funciones son gratis para todo el mundo.
 
-Sparka es una red social de citas al estilo de Tinder (deslizar, hacer match y chatear), pero pensada para conectar mejor:
+## Solo en Sparka
+
+### 🙈 A ciegas: la Pregunta del Día
+
+Cada día hay **una pregunta nueva, la misma para todo el mundo** (“¿Qué superpoder completamente inútil te encantaría tener?”).
+
+1. Respondes, y solo entonces puedes leer las respuestas de la gente cercana: **sin fotos, sin nombres**. Solo ves edad, distancia, qué busca y cuántos intereses compartís.
+2. Das una **chispa ✨** a las respuestas que te enamoran. Es secreto.
+3. Si a esa persona también le encanta la tuya: **match a ciegas**. Su foto se revela con una animación y la conversación empieza con vuestras dos respuestas.
+4. Si no es mutuo, **nunca sabrá quién fuiste**. Solo verá que “a alguien” le encantó su respuesta.
+
+Y una segunda oportunidad: en “A ciegas” **sí aparece gente a la que descartaste por su foto** en Descubrir.
+
+### 💓 El Pulso: adiós al ghosting
+
+Cuando una conversación lleva 48 h en silencio (o cuando alguien lo pide desde el chat), Sparka **pregunta en secreto a las dos personas**: “¿Te apetece seguir hablando?”.
+
+- **Sí + sí** → “¡Pulso mutuo!” y os proponemos un plan concreto según vuestros intereses en común.
+- **Un no** → la conversación se cierra con una **despedida amable** escrita por Sparka. Nadie tiene que buscar las palabras, y nadie se queda esperando.
+- **Sin respuesta en 3 días** → se cierra sola.
+- Tu “sí” **solo se revela si es mutuo**: nunca te expones.
+
+<p align="center">
+  <img src="docs/screenshots/a-ciegas.png" width="200" alt="A ciegas: la Pregunta del Día">
+  <img src="docs/screenshots/revelacion.png" width="200" alt="Revelación del match a ciegas">
+  <img src="docs/screenshots/pulso.png" width="200" alt="El Pulso">
+  <img src="docs/screenshots/pulso-mutuo.png" width="200" alt="Pulso mutuo">
+</p>
+
+## Además: todo gratis
+
+Sparka también hace lo que ya conoces (deslizar, hacer match y chatear), pero sin muros de pago:
 
 <p align="center">
   <img src="docs/screenshots/descubrir.png" width="200" alt="Descubrir">
@@ -13,6 +44,8 @@ Sparka es una red social de citas al estilo de Tinder (deslizar, hacer match y c
 
 | | Apps de citas habituales | **Sparka** |
 |---|---|---|
+| Conocer gente por lo que piensa, sin ver fotos | No | ✅ **A ciegas**, cada día |
+| Qué pasa cuando alguien deja de contestar | Ghosting | ✅ **El Pulso**: cierre amable o plan mutuo |
 | Ver quién te ha dado like | Normalmente de pago | ✅ Gratis |
 | Likes | Limitados al día | ✅ Ilimitados |
 | Deshacer el último swipe | Normalmente de pago | ✅ Gratis |
@@ -53,7 +86,7 @@ npm run dev
 
 Abre **http://localhost:5173**, crea una cuenta y completa tu perfil.
 
-> **Modo demo:** la primera vez se crean ~540 perfiles de ejemplo repartidos por 20 ciudades de España y Latinoamérica para que puedas probarlo todo (algunos ya te habrán dado like, devuelven likes y contestan en el chat). Están **siempre marcados como “Demo”** y no pueden iniciar sesión. Desactívalo en producción con `DEMO_MODE=false`.
+> **Modo demo:** la primera vez se crean ~540 perfiles de ejemplo repartidos por 20 ciudades de España y Latinoamérica para que puedas probarlo todo: algunos ya te habrán dado like, devuelven likes, contestan en el chat, responden a la Pregunta del Día, dan chispas a tu respuesta y votan en el Pulso. Están **siempre marcados como “Demo”** y no pueden iniciar sesión. Desactívalo en producción con `DEMO_MODE=false`.
 
 ### Producción
 
@@ -91,6 +124,10 @@ server/            API (Express 5) + tiempo real (Socket.IO) + SQLite (node:sqli
   auth.js          Contraseñas (scrypt), sesiones en cookie httpOnly, rate limiting
   matching.js      Edad, distancia, elegibilidad mutua y cálculo de afinidad
   safety.js        Detección de insultos y de posibles estafas
+  blind.js         "A ciegas": pregunta del día, feed anónimo y match a ciegas
+  blindQuestions.js  Las preguntas (y respuestas de ejemplo para el modo demo)
+  pulse.js         El Pulso: votos secretos, cierre amable y caducidad
+  matchmaker.js    Crear matches y publicar mensajes (lo usan swipes, A ciegas y Pulso)
   demo.js          Perfiles demo y su comportamiento
   routes/          auth · me (perfil, fotos, preferencias) · discover (swipes, likes) · matches (chat) · safety
 client/src/        Web (React 19 + Vite)
@@ -120,11 +157,15 @@ tests/             node:test + supertest + socket.io-client
 | `GET` | `/api/discover` | Perfiles compatibles ordenados por afinidad |
 | `POST` | `/api/swipes` · `/api/swipes/undo` | Like, paso o Chispa / deshacer |
 | `GET` | `/api/likes` | Quién te ha dado like |
+| `GET` | `/api/blind` | Pregunta del día, tu respuesta y el feed anónimo |
+| `PUT` | `/api/blind/answer` | Responder (o editar mientras nadie le haya dado chispa) |
+| `POST` / `DELETE` | `/api/blind/answers/:id/like` | Dar o retirar una chispa a una respuesta |
 | `GET` / `DELETE` | `/api/matches[/:id]` | Matches / deshacer match |
+| `POST` | `/api/matches/:id/pulse` · `…/pulse/vote` | Tomar el Pulso / votar en secreto (`yes`/`no`) |
 | `GET` / `POST` | `/api/matches/:id/messages` · `POST …/read` | Chat |
 | `POST` | `/api/users/:id/block` · `/api/users/:id/report` | Bloquear y denunciar |
 
-Eventos de Socket.IO: `match:new`, `match:removed`, `likes:changed`, `message:new`, `message:read`, `typing`.
+Eventos de Socket.IO: `match:new`, `match:removed`, `likes:changed`, `message:new`, `message:read`, `typing`, `blind:liked`, `pulse:changed`.
 
 ## Próximos pasos
 

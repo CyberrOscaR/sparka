@@ -51,6 +51,7 @@ export function serializeMessage(row) {
     senderId: row.sender_id,
     body: row.body,
     flag: row.flag,
+    kind: row.kind ?? 'text',
     createdAt: row.created_at,
     readAt: row.read_at,
   };

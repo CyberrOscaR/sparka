@@ -97,6 +97,14 @@ export const messageSchema = z.object({
   confirmed: z.boolean().optional(),
 });
 
+export const blindAnswerSchema = z.object({
+  body: z.string().trim().min(3, 'Escribe al menos 3 caracteres.').max(280, 'Máximo 280 caracteres.'),
+});
+
+export const pulseVoteSchema = z.object({
+  answer: z.enum(['yes', 'no'], 'Responde sí o no.'),
+});
+
 export const reportSchema = z.object({
   reason: z.enum(REPORT_REASON_IDS, 'Elige un motivo.'),
   details: z.string().trim().max(1000).optional().default(''),

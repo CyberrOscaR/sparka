@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { LIMITS } from '../catalog.js';
-import { transaction } from '../db.js';
+import { createMatch } from '../matchmaker.js';
 import { boundingBox, compatibility, distanceKm, mutuallyEligible, parseProfile, publicProfile } from '../matching.js';
-import { getMatchBetween, getPhotoUrls, getProfile, isBlockedEitherWay, pairOf, publicProfileFor } from '../store.js';
+import { getMatchBetween, getPhotoUrls, getProfile, isBlockedEitherWay, publicProfileFor } from '../store.js';
 import { HttpError, parse, swipeSchema } from '../validation.js';
 import { superlikesLeft } from './me.js';
 
@@ -54,29 +54,16 @@ export function discoverRoutes({ db, notify, demo }) {
   const router = Router();
   const complete = requireCompleteProfile(db);
 
-  function createMatch(meId, otherId) {
-    const [a, b] = pairOf(meId, otherId);
-    const now = Date.now();
-    const matchId = transaction(db, () => {
-      const { lastInsertRowid } = db
-        .prepare('INSERT INTO matches (user_a, user_b, created_at) VALUES (?, ?, ?)')
-        .run(a, b, now);
-      // Los mensajes enviados junto al like abren la conversación.
-      const notes = db
-        .prepare(
-          `SELECT swiper_id, message, created_at FROM swipes
-           WHERE ((swiper_id = ? AND target_id = ?) OR (swiper_id = ? AND target_id = ?)) AND message IS NOT NULL
-           ORDER BY created_at`,
-        )
-        .all(a, b, b, a);
-      const insert = db.prepare('INSERT INTO messages (match_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)');
-      for (const n of notes) insert.run(lastInsertRowid, n.swiper_id, n.message, n.created_at);
-      return Number(lastInsertRowid);
-    });
-    const meProfile = getProfile(db, meId);
-    const otherProfile = getProfile(db, otherId);
-    notify(otherId, 'match:new', { matchId, user: publicProfileFor(db, meId, otherProfile) });
-    return { id: matchId, user: publicProfileFor(db, otherId, meProfile) };
+  function matchWith(meId, otherId) {
+    // Los mensajes enviados junto al like abren la conversación.
+    const intro = db
+      .prepare(
+        `SELECT swiper_id AS senderId, message AS body, created_at AS createdAt FROM swipes
+         WHERE ((swiper_id = ? AND target_id = ?) OR (swiper_id = ? AND target_id = ?)) AND message IS NOT NULL
+         ORDER BY created_at`,
+      )
+      .all(meId, otherId, otherId, meId);
+    return createMatch({ db, notify }, meId, otherId, { source: 'swipe', intro });
   }
 
   router.get('/discover', complete, (req, res) => {
@@ -120,7 +107,7 @@ export function discoverRoutes({ db, notify, demo }) {
       const likedBack = db
         .prepare("SELECT 1 FROM swipes WHERE swiper_id = ? AND target_id = ? AND action IN ('like', 'superlike')")
         .get(targetId, me);
-      if (likedBack && !getMatchBetween(db, me, targetId)) match = createMatch(me, targetId);
+      if (likedBack && !getMatchBetween(db, me, targetId)) match = matchWith(me, targetId);
       else if (!likedBack) notify(targetId, 'likes:changed', {});
     }
     res.json({ matched: Boolean(match), match, superlikesLeft: superlikesLeft(db, me) });

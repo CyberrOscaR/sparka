@@ -99,13 +99,53 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+-- "A ciegas": una respuesta por persona y día a la Pregunta del Día.
+CREATE TABLE IF NOT EXISTS blind_answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  question_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE (user_id, day)
+);
+CREATE INDEX IF NOT EXISTS idx_blind_answers_day ON blind_answers(day);
+
+CREATE TABLE IF NOT EXISTS blind_likes (
+  liker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  answer_id INTEGER NOT NULL REFERENCES blind_answers(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (liker_id, answer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_blind_likes_answer ON blind_likes(answer_id);
 `;
+
+// Columnas añadidas después de la primera versión (se aplican también a bases de datos existentes).
+const COLUMNS = [
+  ['matches', 'source', "TEXT NOT NULL DEFAULT 'swipe'"], // 'swipe' | 'blind'
+  ['matches', 'closed_at', 'INTEGER'],
+  ['matches', 'closed_reason', 'TEXT'], // 'pulse_no' | 'pulse_timeout'
+  ['matches', 'pulse_started_at', 'INTEGER'],
+  ['matches', 'pulse_a', 'TEXT'], // voto secreto de user_a: 'yes' | null
+  ['matches', 'pulse_b', 'TEXT'],
+  ['matches', 'last_pulse_at', 'INTEGER'],
+  ['messages', 'kind', "TEXT NOT NULL DEFAULT 'text'"], // 'text' | 'system' | 'blind'
+];
+
+function migrate(db) {
+  for (const [table, column, definition] of COLUMNS) {
+    const exists = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+    if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
 
 export function openDb(file = ':memory:') {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

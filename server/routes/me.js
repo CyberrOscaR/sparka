@@ -31,11 +31,11 @@ export function superlikesLeft(db, userId) {
   return Math.max(0, LIMITS.superlikesPerDay - used);
 }
 
-export function counts(db, userId) {
-  return { likes: likesReceivedCount(db, userId), unread: unreadCount(db, userId) };
+export function counts(db, userId, blind) {
+  return { likes: likesReceivedCount(db, userId), unread: unreadCount(db, userId), blind: blind.summary(userId) };
 }
 
-function privateMe(db, userId) {
+function buildPrivateMe(db, userId, blind) {
   const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId);
   const p = getProfile(db, userId);
   const photos = db
@@ -69,13 +69,14 @@ function privateMe(db, userId) {
     },
     photos,
     preview: publicProfile(p, photos.map((ph) => ph.url), null),
-    counts: counts(db, userId),
+    counts: counts(db, userId, blind),
     superlikesLeft: superlikesLeft(db, userId),
   };
 }
 
-export function meRoutes({ db, cfg, notify, demo }) {
+export function meRoutes({ db, cfg, notify, demo, blind }) {
   const router = Router();
+  const privateMe = (database, userId) => buildPrivateMe(database, userId, blind);
 
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -87,7 +88,7 @@ export function meRoutes({ db, cfg, notify, demo }) {
   });
 
   router.get('/me/counts', (req, res) => {
-    res.json({ ...counts(db, req.userId), superlikesLeft: superlikesLeft(db, req.userId) });
+    res.json({ ...counts(db, req.userId, blind), superlikesLeft: superlikesLeft(db, req.userId) });
   });
 
   router.put('/me/profile', (req, res) => {

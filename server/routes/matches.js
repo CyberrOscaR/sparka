@@ -1,14 +1,16 @@
 import { Router } from 'express';
 import { rateLimit } from '../auth.js';
+import { postMessage } from '../matchmaker.js';
 import { analyzeMessage } from '../safety.js';
 import { getMatchFor, getPhotoUrls, getProfile, publicProfileFor, serializeMessage } from '../store.js';
 import { activityLabel } from '../matching.js';
-import { HttpError, idParam, messageSchema, parse } from '../validation.js';
+import { HttpError, idParam, messageSchema, parse, pulseVoteSchema } from '../validation.js';
 import { requireCompleteProfile } from './discover.js';
 
 const PAGE_SIZE = 50;
 
-export function matchRoutes({ db, notify, demo }) {
+export function matchRoutes(ctx) {
+  const { db, notify, demo, pulse } = ctx;
   const router = Router();
   const complete = requireCompleteProfile(db);
   const messageLimiter = rateLimit({
@@ -24,23 +26,12 @@ export function matchRoutes({ db, notify, demo }) {
     return match;
   }
 
-  function insertMessage(matchId, senderId, body, flag = null) {
-    const now = Date.now();
-    const { lastInsertRowid } = db
-      .prepare('INSERT INTO messages (match_id, sender_id, body, flag, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(matchId, senderId, body, flag, now);
-    const message = serializeMessage(db.prepare('SELECT * FROM messages WHERE id = ?').get(lastInsertRowid));
-    const m = db.prepare('SELECT user_a, user_b FROM matches WHERE id = ?').get(matchId);
-    notify(m.user_a, 'message:new', message);
-    notify(m.user_b, 'message:new', message);
-    return message;
-  }
-
   router.get('/matches', complete, (req, res) => {
     const me = req.userId;
+    pulse.sweep({ userId: me });
     const rows = db
       .prepare(
-        `SELECT id, created_at, CASE WHEN user_a = :me THEN user_b ELSE user_a END AS other_id
+        `SELECT *, CASE WHEN user_a = :me THEN user_b ELSE user_a END AS other_id
          FROM matches WHERE user_a = :me OR user_b = :me`,
       )
       .all({ me });
@@ -52,9 +43,13 @@ export function matchRoutes({ db, notify, demo }) {
       .map((r) => {
         const other = getProfile(db, r.other_id);
         const last = lastMsg.get(r.id);
+        const state = pulse.stateFor(r, me);
         return {
           id: r.id,
           createdAt: r.created_at,
+          source: r.source,
+          closed: Boolean(state.closed),
+          pulsePending: Boolean(state.pulse && !state.pulse.myVote),
           user: {
             id: other.userId,
             name: other.name,
@@ -72,8 +67,25 @@ export function matchRoutes({ db, notify, demo }) {
   });
 
   router.get('/matches/:id', complete, (req, res) => {
+    pulse.sweep({ userId: req.userId });
     const match = loadMatch(req);
-    res.json({ id: match.id, createdAt: match.created_at, user: publicProfileFor(db, match.otherId, req.me) });
+    res.json({
+      id: match.id,
+      createdAt: match.created_at,
+      source: match.source,
+      user: publicProfileFor(db, match.otherId, req.me),
+      ...pulse.stateFor(match, req.userId),
+    });
+  });
+
+  /** "Tomar el Pulso": pregunta secreta a los dos sobre si seguir. */
+  router.post('/matches/:id/pulse', complete, (req, res) => {
+    res.json(pulse.startManual(idParam(req.params.id), req.userId));
+  });
+
+  router.post('/matches/:id/pulse/vote', complete, (req, res) => {
+    const { answer } = parse(pulseVoteSchema, req.body);
+    res.json(pulse.vote(idParam(req.params.id), req.userId, answer));
   });
 
   /** Deshacer match: desaparece para las dos personas y no vuelve a aparecer en Descubrir. */
@@ -100,6 +112,7 @@ export function matchRoutes({ db, notify, demo }) {
 
   router.post('/matches/:id/messages', complete, messageLimiter, (req, res) => {
     const match = loadMatch(req);
+    if (match.closed_at) throw new HttpError(409, 'Esta conversación está cerrada.');
     const { body, confirmed } = parse(messageSchema, req.body);
     const risk = analyzeMessage(body);
     if (risk.offensive && !confirmed) {
@@ -109,12 +122,12 @@ export function matchRoutes({ db, notify, demo }) {
       });
     }
     const flag = risk.scamRisk ? 'scam' : risk.offensive ? 'offensive' : null;
-    const message = insertMessage(match.id, req.userId, body, flag);
+    const message = postMessage(ctx, match.id, req.userId, body, { flag });
 
     const other = getProfile(db, match.otherId);
     if (other.isDemo && demo) {
       demo.scheduleReply(match.id, other.userId, req.userId, (matchId, senderId, text) =>
-        insertMessage(matchId, senderId, text),
+        postMessage(ctx, matchId, senderId, text),
       );
     }
     res.status(201).json({ message });

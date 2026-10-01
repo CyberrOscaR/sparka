@@ -3,6 +3,19 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { Logo } from '../components/ui.jsx';
 
+const UNIQUE = [
+  {
+    icon: '🙈',
+    title: 'A ciegas: la Pregunta del Día',
+    text: 'Cada día, una pregunta para todo el mundo. Lees respuestas sin fotos ni nombres y das chispas a las que te enamoran. Si es mutuo: match a ciegas, y os revelamos. Si no, nadie sabrá nunca quién fuiste.',
+  },
+  {
+    icon: '💓',
+    title: 'El Pulso: adiós al ghosting',
+    text: 'Si una conversación se enfría, os preguntamos en secreto si queréis seguir. Un «sí» solo se revela si es mutuo (y os proponemos un plan). Un «no» se despide con cariño. Nadie se queda esperando.',
+  },
+];
+
 const PERKS = [
   ['👀', 'Mira quién te da like', 'Gratis. En otras apps, esto cuesta dinero.'],
   ['♾️', 'Likes ilimitados', 'Sin contador que te frene a las 12 del mediodía.'],
@@ -42,12 +55,26 @@ export function Landing() {
       <section className="landing-hero">
         <Logo size={44} />
         <h1>
-          Citas sin muros de pago. <span className="grad-text">De verdad.</span>
+          Enamórate de cómo piensa alguien. <span className="grad-text">Gratis, de verdad.</span>
         </h1>
         <p className="lead">
-          Sparka es una app de citas gratuita: todas las funciones para todo el mundo. Sin planes premium, sin
-          “boosts” y sin trucos para que pagues.
+          Sparka es la app de citas donde importa lo que piensas, no solo tu foto, y donde nadie desaparece sin decir
+          adiós. Todas las funciones son gratis para todo el mundo: sin planes premium ni trucos para que pagues.
         </p>
+        <div className="unique">
+          <span className="unique-label">Solo en Sparka</span>
+          {UNIQUE.map((u) => (
+            <div className="unique-card" key={u.title}>
+              <span className="unique-icon" aria-hidden="true">
+                {u.icon}
+              </span>
+              <span>
+                <strong>{u.title}</strong>
+                <small>{u.text}</small>
+              </span>
+            </div>
+          ))}
+        </div>
         <div className="perks">
           {PERKS.map(([icon, title, text]) => (
             <div className="perk" key={title}>

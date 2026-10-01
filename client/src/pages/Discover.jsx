@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Heart, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, Heart, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useRealtime } from '../lib/realtime.jsx';
 import { useToast } from '../lib/toast.jsx';
@@ -166,6 +167,16 @@ export function Discover() {
           </button>
         </div>
       </header>
+
+      {counts.blind && !counts.blind.answered && (
+        <Link to="/a-ciegas" className="blind-teaser">
+          <span aria-hidden="true">🙈</span>
+          <span>
+            <strong>La Pregunta del Día te espera.</strong> Sin fotos: enamora con lo que piensas.
+          </span>
+          <ChevronRight size={18} />
+        </Link>
+      )}
 
       {visible.length === 0 && flying.length === 0 ? (
         <Empty
